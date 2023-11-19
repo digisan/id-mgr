@@ -7,19 +7,38 @@ import (
 	lk "github.com/digisan/logkit"
 )
 
+// 1111111111111111111111111111111111111111111111111111111111111111
+
 func TestInit64bits(t *testing.T) {
-	if err := Init64bits(1, 7, 12, 4, 18, 6, 8, 4, 4); err != nil {
+	if err := Init64bits(4, 2, 14, 4, 18, 6, 8, 4, 4); err != nil {
 		fmt.Println(err)
+		return
+	} else {
+		// fmt.Printf("%064b\n", masks)
+		// fmt.Printf("%064b\n", segs)
 	}
 
-	fmt.Println(maxDescCap(0))
-	fmt.Println(maxDescCap(1))
-	fmt.Println(maxDescCap(2))
-	fmt.Println(maxDescCap(3))
-	fmt.Println(maxDescCap(4))
-	fmt.Println(maxDescCap(5))
-	fmt.Println(maxDescCap(6))
-	fmt.Println(maxDescCap(7))
+	fmt.Println(ID(0).selfStartBitIdx(), ID(0).descAvailableBitIdx(), ID(0).level(), nextLvlDescCap(ID(0).level()))
+	fmt.Println(ID(1).selfStartBitIdx(), ID(1).descAvailableBitIdx(), ID(1).level(), nextLvlDescCap(ID(1).level()))
+	fmt.Println(ID(2).selfStartBitIdx(), ID(2).descAvailableBitIdx(), ID(2).level(), nextLvlDescCap(ID(2).level()))
+	fmt.Println(ID(3).selfStartBitIdx(), ID(3).descAvailableBitIdx(), ID(3).level(), nextLvlDescCap(ID(3).level()))
+	fmt.Println(ID(16).selfStartBitIdx(), ID(16).descAvailableBitIdx(), ID(16).level(), nextLvlDescCap(ID(16).level()))
+	fmt.Println(ID(63).selfStartBitIdx(), ID(63).descAvailableBitIdx(), ID(63).level(), nextLvlDescCap(ID(63).level()))
+	fmt.Println(ID(64).selfStartBitIdx(), ID(64).descAvailableBitIdx(), ID(64).level(), nextLvlDescCap(ID(64).level()))
+	fmt.Println(ID(64000).selfStartBitIdx(), ID(64000).descAvailableBitIdx(), ID(64000).level(), nextLvlDescCap(ID(64000).level()))
+
+	fmt.Println()
+
+	fmt.Println(nextLvlDescCap(0))
+	fmt.Println(nextLvlDescCap(1))
+	fmt.Println(nextLvlDescCap(2))
+	fmt.Println(nextLvlDescCap(3))
+	fmt.Println(nextLvlDescCap(4))
+	fmt.Println(nextLvlDescCap(5))
+	fmt.Println(nextLvlDescCap(6))
+	fmt.Println(nextLvlDescCap(7))
+	fmt.Println(nextLvlDescCap(8))
+	fmt.Println(nextLvlDescCap(9))
 }
 
 func TestID1(t *testing.T) {
@@ -43,11 +62,11 @@ func TestID1(t *testing.T) {
 
 	var id ID = 0
 	fmt.Println("ID(0) level:", id.level())
-	fmt.Println("availableSegBitIdx:", id.availableSegBitIdx())
+	fmt.Println("descAvailableBitIdx:", id.descAvailableBitIdx())
 
 	id = 10
 	fmt.Println("ID(10) level:", id.level())
-	fmt.Println("availableSegBitIdx:", id.availableSegBitIdx())
+	fmt.Println("descAvailableBitIdx:", id.descAvailableBitIdx())
 
 	id = makeID(12, 1)
 	fmt.Printf("makeID(12, 1): %x\n", id)
@@ -86,31 +105,35 @@ func TestID2(t *testing.T) {
 		lk.FailOnErr("%v", err)
 		fmt.Println("Level:", id.level(), id, id.Ancestors())
 
-		if i == 1 {
+		lk.FailOnErr("%d", DelID(id))
+
+		if i == 0 {
 			_, err = id.AddAlias("A", "B")
 			lk.FailOnErr("%v", err)
 		}
-		id.RmAlias("AA")
+
+		_, err = id.RmAlias("AA")
+		lk.FailOnErr("%v", err)
 		fmt.Println(id.Alias())
 
 		for i := 0; i < N; i++ {
 			id, err := GenID(id)
-			lk.FailOnErr("%d", err)
+			lk.FailOnErr("%v", err)
 			fmt.Println("   L1:", id, id.Ancestors())
 
 			for i := 0; i < N; i++ {
 				id, err := GenID(id)
-				lk.FailOnErr("%d", err)
+				lk.FailOnErr("%v", err)
 				fmt.Println("        L2:", id, id.Ancestors())
 
 				for i := 0; i < N; i++ {
 					id, err := GenID(id)
-					lk.FailOnErr("%d", err)
+					lk.FailOnErr("%v", err)
 					fmt.Println("            L3:", id, id.Ancestors())
 
 					for i := 0; i < N; i++ {
 						id, err := GenID(id)
-						lk.FailOnErr("%d", err)
+						lk.FailOnErr("%v", err)
 						fmt.Println("                L4:", id, id.Ancestors())
 					}
 				}

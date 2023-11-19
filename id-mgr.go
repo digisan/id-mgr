@@ -10,8 +10,8 @@ const N uint8 = 64
 const F16 uint64 = 0xFFFFFFFFFFFFFFFF
 
 var (
-	MASKS = []uint64{}
-	SEGS  = []uint64{}
+	masks = []uint64{}
+	segs  = []uint64{}
 )
 
 // most left segment stores root class, then its descendants
@@ -24,21 +24,21 @@ func Init64bits(segments ...uint8) error {
 	for _, n := range segments {
 		sum += n
 		shift := N - sum
-		MASKS = append(MASKS, F16>>uint64(shift))
+		masks = append(masks, F16>>uint64(shift))
 	}
-	// fmt.Println(MASKS)
+	// fmt.Println(masks)
 
-	for i, mask := range MASKS {
+	for i, mask := range masks {
 		var seg uint64
 		if i == 0 {
 			seg = mask
 		} else {
-			seg = mask ^ MASKS[i-1]
+			seg = mask ^ masks[i-1]
 		}
 		// fmt.Printf("seg  %d: %016x\n\n", i, seg)
-		SEGS = append(SEGS, seg)
+		segs = append(segs, seg)
 	}
-	// fmt.Println(SEGS)
+	// fmt.Println(segs)
 
 	return nil
 }
@@ -55,42 +55,63 @@ var (
 	// key: super-id; value: descendants' amount. If key(super id) is 0, which means level0's amount
 	mRecord = make(map[ID]uint)
 
-	// key: id deleted
-	mDeleted = make(map[ID]struct{})
-
 	// alias: key id, value: aliases
 	mAlias = make(map[ID][]string)
 )
 
+func (id ID) Exists() bool {
+	_, ok := mRecord[id]
+	return ok
+}
+
 func (id ID) level() int {
-	for i, s := range Reverse(SEGS) {
+	for i, s := range Reverse(segs) {
 		// fmt.Printf("---> %d %016x\n", i, s)
 		if uint64(id)&s != 0 {
-			return len(SEGS) - i - 1
+			return len(segs) - i - 1
 		}
 	}
 	return -1
 }
 
-func (id ID) availableSegBitIdx() int {
+func (id ID) selfStartBitIdx() int {
+	lvl := id.level()
+	if lvl < 0 {
+		return -1
+	}
+	if lvl == 0 {
+		return 0
+	}
+
+	mask := masks[lvl-1]
+	for i := 0; i < 64; i++ {
+		if mask == 0 {
+			return i
+		}
+		mask = mask >> 1
+	}
+	return 0
+}
+
+func (id ID) descAvailableBitIdx() int {
 	lvl := id.level()
 	if lvl == -1 {
 		return 0
 	}
-	const bitChecker = 0x0F
-	s := MASKS[lvl]
+
+	mask := masks[lvl]
 	for i := 0; i < 64; i++ {
-		if bitChecker&s == 0 {
+		if mask == 0 {
 			return i
 		}
-		s = s >> 1
+		mask = mask >> 1
 	}
 	return 0
 }
 
 func (id ID) Ancestors() (ids []ID) {
 	for i := 0; i < id.level(); i++ {
-		ids = append(ids, id&ID(MASKS[i]))
+		ids = append(ids, id&ID(masks[i]))
 	}
 	return
 }
@@ -150,6 +171,9 @@ func SearchIDByAlias(alias string, fromIDs ...ID) ID {
 }
 
 func (id ID) AddAlias(aliases ...string) ([]string, error) {
+	if !id.Exists() {
+		return nil, fmt.Errorf("error: %v doesn't exist, cannot do AddAlias", id)
+	}
 
 	// check alias conflict
 	byIDs := ID(0).Descendants(10)
@@ -164,11 +188,14 @@ func (id ID) AddAlias(aliases ...string) ([]string, error) {
 	return id.Alias(), nil
 }
 
-func (id ID) RmAlias(aliases ...string) []string {
+func (id ID) RmAlias(aliases ...string) ([]string, error) {
+	if !id.Exists() {
+		return nil, fmt.Errorf("error: %v doesn't exist, cannot do RmAlias", id)
+	}
 	mAlias[id] = Filter(id.Alias(), func(i int, e string) bool {
 		return NotIn(e, aliases...)
 	})
-	return id.Alias()
+	return id.Alias(), nil
 }
 
 func trimLowZero(s uint64, bitStep uint8) uint64 {
@@ -193,17 +220,18 @@ func trimLowZeroHex(s uint64) uint64 {
 	return trimLowZero(s, 4)
 }
 
-func maxDescCap(lvl int) uint {
-	if lvl < len(SEGS) {
-		return uint(trimLowZeroBin(SEGS[lvl]))
+func nextLvlDescCap(lvl int) int {
+	if lvl < 0 {
+		return -1
+	}
+	if lvl < len(segs) {
+		return int(trimLowZeroBin(segs[lvl]))
 	}
 	return 0
 }
 
 func makeID(sid ID, idx uint) ID {
-	abi := sid.availableSegBitIdx()
-	idx = idx << ID(abi)
-	return sid | ID(idx)
+	return ID(idx<<ID(sid.descAvailableBitIdx())) | sid
 }
 
 func checkSuperID(sid ID) error {
@@ -213,7 +241,7 @@ func checkSuperID(sid ID) error {
 	for _, anc := range sid.AncestorsWithSelf() {
 		// fmt.Println("ancestor:", anc)
 		if _, ok := mRecord[anc]; !ok {
-			return fmt.Errorf("class value@%x(HEX) doesn't exist (level %d)", anc, anc.level())
+			return fmt.Errorf("error: %x(HEX) doesn't exist (level %d), cannot be another's super id", anc, anc.level())
 		}
 	}
 	return nil
@@ -236,7 +264,7 @@ func GenID(sid ID) (ID, error) {
 		if sid == 0 {
 			lvl = 0
 		}
-		if nUsed == maxDescCap(lvl) {
+		if int(nUsed) == nextLvlDescCap(lvl) {
 			return 0, fmt.Errorf("level %d has no space to store", lvl)
 		}
 		id := makeID(sid, nUsed+1)
@@ -249,6 +277,13 @@ func GenID(sid ID) (ID, error) {
 }
 
 func DelID(id ID) error {
+	if _, ok := mRecord[id]; !ok {
+		return nil
+	}
+	if descIDs := id.Descendants(1); len(descIDs) > 0 {
+		return fmt.Errorf("%x has descendants [%x], cannot be deleted", id, descIDs)
+	}
+	delete(mRecord, id)
 	return nil
 }
 
