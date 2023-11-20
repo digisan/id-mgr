@@ -2,6 +2,7 @@ package idmgr
 
 import (
 	"fmt"
+	"strings"
 
 	. "github.com/digisan/go-generics/v2"
 )
@@ -56,7 +57,7 @@ var (
 	mRecord = make(map[ID]uint)
 
 	// alias: key id, value: aliases
-	mAlias = make(map[ID][]string)
+	mAlias = make(map[ID][]any)
 )
 
 func (id ID) Exists() bool {
@@ -133,7 +134,9 @@ func (id ID) iterDesc(out *[]ID) {
 	for i := uint(1); i <= n; i++ {
 		descID := makeID(id, i)
 		// fmt.Println(descID)
-		*out = append(*out, descID)
+		if _, ok := mRecord[descID]; ok {
+			*out = append(*out, descID)
+		}
 		descID.iterDesc(out)
 	}
 }
@@ -142,13 +145,17 @@ func (id ID) AncestorsWithSelf() (ids []ID) {
 	return append(id.Ancestors(), id)
 }
 
-func (id ID) Alias() []string {
+func (id ID) Alias() []any {
 	return mAlias[id]
 }
 
-func aliasOccupied(alias string, byIDs ...ID) (bool, ID) {
+func WholeIDs() []ID {
+	return ID(0).Descendants(len(segs))
+}
+
+func aliasOccupied(alias any, byIDs ...ID) (bool, ID) {
 	if len(byIDs) == 0 {
-		byIDs = ID(0).Descendants(10)
+		byIDs = WholeIDs()
 	}
 	for _, desc := range byIDs {
 		if In(alias, desc.Alias()...) {
@@ -158,9 +165,9 @@ func aliasOccupied(alias string, byIDs ...ID) (bool, ID) {
 	return false, 0
 }
 
-func SearchIDByAlias(alias string, fromIDs ...ID) ID {
+func SearchIDByAlias(alias any, fromIDs ...ID) ID {
 	if len(fromIDs) == 0 {
-		fromIDs = ID(0).Descendants(10)
+		fromIDs = WholeIDs()
 	}
 	for _, id := range fromIDs {
 		if In(alias, id.Alias()...) {
@@ -170,13 +177,13 @@ func SearchIDByAlias(alias string, fromIDs ...ID) ID {
 	return 0
 }
 
-func (id ID) AddAlias(aliases ...string) ([]string, error) {
+func (id ID) AddAlias(aliases ...any) ([]any, error) {
 	if !id.Exists() {
 		return nil, fmt.Errorf("error: %v doesn't exist, cannot do AddAlias", id)
 	}
 
 	// check alias conflict
-	byIDs := ID(0).Descendants(10)
+	byIDs := WholeIDs()
 	for _, alias := range aliases {
 		if used, byId := aliasOccupied(alias, byIDs...); used {
 			return id.Alias(), fmt.Errorf("'%v' is already used by [%d], [%d] cannot use it", alias, byId, id)
@@ -188,11 +195,11 @@ func (id ID) AddAlias(aliases ...string) ([]string, error) {
 	return id.Alias(), nil
 }
 
-func (id ID) RmAlias(aliases ...string) ([]string, error) {
+func (id ID) RmAlias(aliases ...any) ([]any, error) {
 	if !id.Exists() {
 		return nil, fmt.Errorf("error: %v doesn't exist, cannot do RmAlias", id)
 	}
-	mAlias[id] = Filter(id.Alias(), func(i int, e string) bool {
+	mAlias[id] = Filter(id.Alias(), func(i int, e any) bool {
 		return NotIn(e, aliases...)
 	})
 	return id.Alias(), nil
@@ -234,23 +241,22 @@ func makeID(sid ID, idx uint) ID {
 	return ID(idx<<ID(sid.descAvailableBitIdx())) | sid
 }
 
-func checkSuperID(sid ID) error {
-	if sid == 0 {
-		return nil
+func IsValidID(id ID) bool {
+	if len(mRecord) == 0 && id == 0 {
+		return true
 	}
-	for _, anc := range sid.AncestorsWithSelf() {
-		// fmt.Println("ancestor:", anc)
-		if _, ok := mRecord[anc]; !ok {
-			return fmt.Errorf("error: %x(HEX) doesn't exist (level %d), cannot be another's super id", anc, anc.level())
+	for _, id := range id.AncestorsWithSelf() {
+		if !id.Exists() {
+			return false
 		}
 	}
-	return nil
+	return true
 }
 
 // if sid is 0, generate level 0 class
 func GenID(sid ID) (ID, error) {
-	if err := checkSuperID(sid); err != nil {
-		return 0, err
+	if !IsValidID(sid) {
+		return 0, fmt.Errorf("error: %x(HEX) is invalid ID, cannot be another's super ID", sid)
 	}
 	if nUsed, ok := mRecord[sid]; !ok || nUsed == 0 { // the first descendant class comes
 		id := makeID(sid, 1)
@@ -265,7 +271,7 @@ func GenID(sid ID) (ID, error) {
 			lvl = 0
 		}
 		if int(nUsed) == nextLvlDescCap(lvl) {
-			return 0, fmt.Errorf("level %d has no space to store", lvl)
+			return 0, fmt.Errorf("level [%d] has no space to store [%d]", lvl, nUsed+1)
 		}
 		id := makeID(sid, nUsed+1)
 		defer func() {
@@ -281,12 +287,47 @@ func DelID(id ID) error {
 		return nil
 	}
 	if descIDs := id.Descendants(1); len(descIDs) > 0 {
-		return fmt.Errorf("%x has descendants [%x], cannot be deleted", id, descIDs)
+		return fmt.Errorf("%x has descendants [%x], cannot be deleted, nothing to delete", id, descIDs)
 	}
 	delete(mRecord, id)
 	return nil
 }
 
-func MakeHierarchy(super, self string) {
+func DelIDViaAlias(alias any) error {
+	id := SearchIDByAlias(alias, WholeIDs()...)
+	if len(fmt.Sprint(alias)) > 0 && id == 0 {
+		return fmt.Errorf("alias [%s] cannot be found, nothing to delete", alias)
+	}
+	return DelID(id)
+}
+
+func BuildHierarchy(super, self string) error {
+	sid := SearchIDByAlias(super, WholeIDs()...)
+	if sid == 0 && len(super) > 0 {
+		return fmt.Errorf("super must be empty string as root, but [%v] is given", super)
+	}
+	id, err := GenID(sid)
+	if err != nil {
+		return err
+	}
+	_, err = id.AddAlias(self)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func PrintHierarchy() {
+	fmt.Println("-----------------------------")
+	// fmt.Println(mRecord)
+	// fmt.Println(WholeIDs())
+	for _, id := range WholeIDs() {
+		lvl := id.level()
+		indent := strings.Repeat("\t", lvl)
+		fmt.Printf("%s%v\n", indent, id.Alias())
+	}
+}
+
+func DumpHierarchy(fpath string) {
 
 }

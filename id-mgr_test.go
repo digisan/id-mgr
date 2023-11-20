@@ -105,7 +105,7 @@ func TestID2(t *testing.T) {
 		lk.FailOnErr("%v", err)
 		fmt.Println("Level:", id.level(), id, id.Ancestors())
 
-		lk.FailOnErr("%d", DelID(id))
+		// lk.FailOnErr("%d", DelID(id))
 
 		if i == 0 {
 			_, err = id.AddAlias("A", "B")
@@ -119,22 +119,22 @@ func TestID2(t *testing.T) {
 		for i := 0; i < N; i++ {
 			id, err := GenID(id)
 			lk.FailOnErr("%v", err)
-			fmt.Println("   L1:", id, id.Ancestors())
+			fmt.Println("   Level:", id.level(), id, id.Ancestors())
 
 			for i := 0; i < N; i++ {
 				id, err := GenID(id)
 				lk.FailOnErr("%v", err)
-				fmt.Println("        L2:", id, id.Ancestors())
+				fmt.Println("        Level:", id.level(), id, id.Ancestors())
 
 				for i := 0; i < N; i++ {
 					id, err := GenID(id)
 					lk.FailOnErr("%v", err)
-					fmt.Println("            L3:", id, id.Ancestors())
+					fmt.Println("            Level:", id.level(), id, id.Ancestors())
 
 					for i := 0; i < N; i++ {
 						id, err := GenID(id)
 						lk.FailOnErr("%v", err)
-						fmt.Println("                L4:", id, id.Ancestors())
+						fmt.Println("                Level:", id.level(), id, id.Ancestors())
 					}
 				}
 			}
@@ -143,9 +143,68 @@ func TestID2(t *testing.T) {
 
 	fmt.Println("-------------------------------")
 
-	// id = ID(0)
-	// descendants := id.Descendants(1)
-	// fmt.Println(len(descendants), descendants)
+}
 
-	// fmt.Println(SearchIDByAlias("A"))
+func TestAlias(t *testing.T) {
+
+	if err := Init64bits(4, 2, 14, 4, 18, 6, 8, 4, 4); err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		// fmt.Printf("%064b\n", masks)
+		// fmt.Printf("%064b\n", segs)
+	}
+
+	for i := 1; i <= 10; i++ {
+		id, err := GenID(0)
+		lk.FailOnErr("%v", err)
+		fmt.Println(id)
+		id.AddAlias(i*10, i*100)
+
+		for j := 1; j <= 10; j++ {
+			id, err := GenID(ID(i))
+			lk.FailOnErr("%v", err)
+			fmt.Println(id)
+			id.AddAlias(i*10, i*100)
+		}
+	}
+
+	descendants := ID(5).Descendants(100)
+	fmt.Println(descendants, len(descendants))
+
+	fmt.Println(SearchIDByAlias(2000))
+	fmt.Println(SearchIDByAlias(90))
+
+	fmt.Println(WholeIDs())
+}
+
+func TestBuildHierarchy(t *testing.T) {
+
+	if err := Init64bits(4, 2, 14, 4, 18, 6, 8, 4, 4); err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		// fmt.Printf("%064b\n", masks)
+		// fmt.Printf("%064b\n", segs)
+	}
+
+	lk.FailOnErr("%v", BuildHierarchy("", "C1"))
+	lk.FailOnErr("%v", BuildHierarchy("C1", "C12"))
+
+	lk.FailOnErr("%v", BuildHierarchy("", "C2"))
+	lk.FailOnErr("%v", BuildHierarchy("C2", "C13"))
+
+	lk.FailOnErr("%v", BuildHierarchy("", "C14"))
+	lk.FailOnErr("%v", BuildHierarchy("C14", "C141"))
+
+	lk.FailOnErr("%v", BuildHierarchy("C12", "C121"))
+	lk.FailOnErr("%v", BuildHierarchy("C12", "C122"))
+	lk.FailOnErr("%v", BuildHierarchy("C121", "C1211"))
+
+	PrintHierarchy()
+
+	lk.FailOnErr("%v", DelIDViaAlias("C1211"))
+	lk.FailOnErr("%v", DelIDViaAlias("C122"))
+
+	PrintHierarchy()
 }
