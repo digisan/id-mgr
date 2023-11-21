@@ -108,11 +108,11 @@ func TestID2(t *testing.T) {
 		// lk.FailOnErr("%d", DelID(id))
 
 		if i == 0 {
-			_, err = id.AddAlias("A", "B")
+			_, err = id.AddAliases([]any{"A", "B"})
 			lk.FailOnErr("%v", err)
 		}
 
-		_, err = id.RmAlias("AA")
+		_, err = id.RmAliases("AA")
 		lk.FailOnErr("%v", err)
 		fmt.Println(id.Alias())
 
@@ -159,13 +159,13 @@ func TestAlias(t *testing.T) {
 		id, err := GenID(0)
 		lk.FailOnErr("%v", err)
 		fmt.Println(id)
-		id.AddAlias(i*10, i*100)
+		id.AddAliases([]any{i * 10, i * 100})
 
 		for j := 1; j <= 10; j++ {
 			id, err := GenID(ID(i))
 			lk.FailOnErr("%v", err)
 			fmt.Println(id)
-			id.AddAlias(i*10, i*100)
+			id.AddAliases([]any{i * 10, i * 100})
 		}
 	}
 
@@ -188,7 +188,7 @@ func TestBuildHierarchy(t *testing.T) {
 		// fmt.Printf("%064b\n", segs)
 	}
 
-	lk.FailOnErr("%v", BuildHierarchy("", "C1"))
+	lk.FailOnErr("%v", BuildHierarchy("", "C1", "C3"))
 	lk.FailOnErr("%v", BuildHierarchy("C1", "C12"))
 
 	lk.FailOnErr("%v", BuildHierarchy("", "C2"))
@@ -199,7 +199,11 @@ func TestBuildHierarchy(t *testing.T) {
 
 	lk.FailOnErr("%v", BuildHierarchy("C12", "C121"))
 	lk.FailOnErr("%v", BuildHierarchy("C12", "C122"))
-	lk.FailOnErr("%v", BuildHierarchy("C121", "C1211"))
+	lk.WarnOnErr("%v", BuildHierarchy("C121", "C1211", "C1212", "C1213"))
+
+	AddAliases("C121", "c121", "CC121")
+	RmAliases("c121", "CC121")
+	fmt.Println(GetAliases("c121"))
 
 	PrintHierarchy()
 

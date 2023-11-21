@@ -177,17 +177,27 @@ func SearchIDByAlias(alias any, fromIDs ...ID) ID {
 	return 0
 }
 
-func (id ID) AddAlias(aliases ...any) ([]any, error) {
+// check alias conflict
+func CheckAlias(aliases []any, fromIDs ...ID) error {
+	if len(fromIDs) == 0 {
+		fromIDs = WholeIDs()
+	}
+	for _, alias := range aliases {
+		if used, byId := aliasOccupied(alias, fromIDs...); used {
+			return fmt.Errorf("'%v' is already used by [%d]", alias, byId)
+		}
+	}
+	return nil
+}
+
+func (id ID) AddAliases(aliases []any, validRangeIDs ...ID) ([]any, error) {
 	if !id.Exists() {
 		return nil, fmt.Errorf("error: %v doesn't exist, cannot do AddAlias", id)
 	}
 
 	// check alias conflict
-	byIDs := WholeIDs()
-	for _, alias := range aliases {
-		if used, byId := aliasOccupied(alias, byIDs...); used {
-			return id.Alias(), fmt.Errorf("'%v' is already used by [%d], [%d] cannot use it", alias, byId, id)
-		}
+	if err := CheckAlias(aliases, validRangeIDs...); err != nil {
+		return id.Alias(), err
 	}
 
 	mAlias[id] = append(mAlias[id], aliases...)
@@ -195,7 +205,7 @@ func (id ID) AddAlias(aliases ...any) ([]any, error) {
 	return id.Alias(), nil
 }
 
-func (id ID) RmAlias(aliases ...any) ([]any, error) {
+func (id ID) RmAliases(aliases ...any) ([]any, error) {
 	if !id.Exists() {
 		return nil, fmt.Errorf("error: %v doesn't exist, cannot do RmAlias", id)
 	}
@@ -293,6 +303,7 @@ func DelID(id ID) error {
 	return nil
 }
 
+// DelIDViaAlias incurs updated WholeIDs
 func DelIDViaAlias(alias any) error {
 	id := SearchIDByAlias(alias, WholeIDs()...)
 	if len(fmt.Sprint(alias)) > 0 && id == 0 {
@@ -301,20 +312,47 @@ func DelIDViaAlias(alias any) error {
 	return DelID(id)
 }
 
-func BuildHierarchy(super, self string) error {
-	sid := SearchIDByAlias(super, WholeIDs()...)
-	if sid == 0 && len(super) > 0 {
+// BuildHierarchy incurs updated WholeIDs. building one super with multiple descendants (each descendant with single alias)
+func BuildHierarchy(super any, selves ...any) error {
+
+	fromIDs := WholeIDs()
+
+	sid := SearchIDByAlias(super, fromIDs...)
+	if sid == 0 && len(fmt.Sprint(super)) > 0 {
 		return fmt.Errorf("super must be empty string as root, but [%v] is given", super)
 	}
-	id, err := GenID(sid)
-	if err != nil {
-		return err
-	}
-	_, err = id.AddAlias(self)
-	if err != nil {
-		return err
+
+	for _, self := range selves {
+		if err := CheckAlias([]any{self}, fromIDs...); err != nil {
+			return fmt.Errorf("%w, build nothing for [%s]-[%s]", err, super, selves)
+		}
+		id, err := GenID(sid)
+		if err != nil {
+			return err
+		}
+		fromIDs = WholeIDs()
+		if _, err := id.AddAliases([]any{self}, fromIDs...); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func AddAliases(self any, aliases ...any) error {
+	id := SearchIDByAlias(self)
+	_, err := id.AddAliases(aliases)
+	return err
+}
+
+func GetAliases(self any) []any {
+	id := SearchIDByAlias(self)
+	return id.Alias()
+}
+
+func RmAliases(self any, aliases ...any) error {
+	id := SearchIDByAlias(self)
+	_, err := id.RmAliases(aliases...)
+	return err
 }
 
 func PrintHierarchy() {
@@ -324,7 +362,7 @@ func PrintHierarchy() {
 	for _, id := range WholeIDs() {
 		lvl := id.level()
 		indent := strings.Repeat("\t", lvl)
-		fmt.Printf("%s%v\n", indent, id.Alias())
+		fmt.Printf("%s%d(%v)\n", indent, id, id.Alias())
 	}
 }
 
