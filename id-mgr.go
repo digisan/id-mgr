@@ -2,6 +2,7 @@ package idmgr
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	. "github.com/digisan/go-generics/v2"
@@ -367,9 +368,10 @@ func RmAliases(self any, aliases ...any) error {
 	return err
 }
 
-func PrintHierarchy() {
+func PrintHierarchy() string {
 	// fmt.Println(mRecord)
 	// fmt.Println(WholeIDs())
+	lines := []string{}
 	for _, id := range WholeIDs() {
 		lvl := id.level()
 		indent := strings.Repeat("\t", lvl)
@@ -377,10 +379,18 @@ func PrintHierarchy() {
 		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
 			aliasesStr = strings.Join(aliases, "^")
 		}
-		fmt.Printf("%s%d(%v)\n", indent, id, aliasesStr)
+		lines = append(lines, fmt.Sprintf("%s%d(%v)", indent, id, aliasesStr))
+		// fmt.Printf("%s%d(%v)\n", indent, id, aliasesStr)
 	}
+	rt := strings.Join(lines, "\n")
+	fmt.Println(rt)
+	return rt
 }
 
-func DumpHierarchy(fpath string) {
+func DumpHierarchy(fpath string) error {
+	return os.WriteFile(fpath, []byte(PrintHierarchy()), os.ModePerm)
+}
 
+func IngestHierarchy(fpath string) error {
+	return nil
 }

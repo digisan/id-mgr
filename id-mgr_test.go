@@ -180,7 +180,7 @@ func TestAlias(t *testing.T) {
 
 func TestBuildHierarchy(t *testing.T) {
 
-	if err := Init64bits(4, 2, 14, 4, 18, 6, 8, 4, 4); err != nil {
+	if err := Init64bits(4, 4, 12, 4, 18, 6, 8, 4, 4); err != nil {
 		fmt.Println(err)
 		return
 	} else {
@@ -200,6 +200,9 @@ func TestBuildHierarchy(t *testing.T) {
 	lk.FailOnErr("%v", BuildHierarchy("C12", "C121"))
 	lk.FailOnErr("%v", BuildHierarchy("C12", "C122"))
 	lk.WarnOnErr("%v", BuildHierarchy("C121", "C1211", "C1212", "C1213"))
+	lk.WarnOnErr("%v", BuildHierarchy("C1213", "C1213-1", "C1213-2"))
+	AddAliases("C1213-2", "C1213-2X", "C1213-2Y", "C1213-2Z")
+	lk.WarnOnErr("%v", BuildHierarchy("C1213-2Z", "2ZZZ", "2XYZ"))
 
 	AddAliases("C121", "c121", "CC121")
 	// RmAliases("C121", "C121")
@@ -215,4 +218,6 @@ func TestBuildHierarchy(t *testing.T) {
 	lk.WarnOnErr("%v", DelIDViaAlias("C122"))
 
 	PrintHierarchy()
+
+	DumpHierarchy("dump.txt")
 }
