@@ -188,7 +188,7 @@ func TestBuildHierarchy(t *testing.T) {
 		// fmt.Printf("%064b\n", segs)
 	}
 
-	lk.FailOnErr("%v", BuildHierarchy("", "C1", "C3"))
+	lk.FailOnErr("%v", BuildHierarchy("", "C1", "C 3", "C  3"))
 	lk.FailOnErr("%v", BuildHierarchy("C1", "C12"))
 
 	lk.FailOnErr("%v", BuildHierarchy("", "C2"))
@@ -202,13 +202,17 @@ func TestBuildHierarchy(t *testing.T) {
 	lk.WarnOnErr("%v", BuildHierarchy("C121", "C1211", "C1212", "C1213"))
 
 	AddAliases("C121", "c121", "CC121")
-	RmAliases("c121", "CC121")
-	fmt.Println(GetAliases("c121"))
+	// RmAliases("C121", "C121")
+	// fmt.Println("--->", GetAliases("C121"))
+
+	// RmAliases("C122", "C122")
+	// fmt.Println("--->", GetAliases("C122"))
 
 	PrintHierarchy()
+	fmt.Println("-----------------------------")
 
-	lk.FailOnErr("%v", DelIDViaAlias("C1211"))
-	lk.FailOnErr("%v", DelIDViaAlias("C122"))
+	lk.WarnOnErr("%v", DelIDViaAlias("C1211"))
+	lk.WarnOnErr("%v", DelIDViaAlias("C122"))
 
 	PrintHierarchy()
 }

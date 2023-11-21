@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	. "github.com/digisan/go-generics/v2"
+	"github.com/digisan/gotk/strs"
 )
 
 const N uint8 = 64
@@ -177,12 +178,23 @@ func SearchIDByAlias(alias any, fromIDs ...ID) ID {
 	return 0
 }
 
+var (
+	exclChars = []string{"(", ")", "^"}
+)
+
+func validateAlias(alias any) bool {
+	return !strs.ContainsAny(fmt.Sprint(alias), exclChars...)
+}
+
 // check alias conflict
 func CheckAlias(aliases []any, fromIDs ...ID) error {
 	if len(fromIDs) == 0 {
 		fromIDs = WholeIDs()
 	}
 	for _, alias := range aliases {
+		if !validateAlias(alias) {
+			return fmt.Errorf("'%v' contains invalid characters like %+v", alias, exclChars)
+		}
 		if used, byId := aliasOccupied(alias, fromIDs...); used {
 			return fmt.Errorf("'%v' is already used by [%d]", alias, byId)
 		}
@@ -356,13 +368,16 @@ func RmAliases(self any, aliases ...any) error {
 }
 
 func PrintHierarchy() {
-	fmt.Println("-----------------------------")
 	// fmt.Println(mRecord)
 	// fmt.Println(WholeIDs())
 	for _, id := range WholeIDs() {
 		lvl := id.level()
 		indent := strings.Repeat("\t", lvl)
-		fmt.Printf("%s%d(%v)\n", indent, id, id.Alias())
+		aliasesStr := ""
+		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
+			aliasesStr = strings.Join(aliases, "^")
+		}
+		fmt.Printf("%s%d(%v)\n", indent, id, aliasesStr)
 	}
 }
 
