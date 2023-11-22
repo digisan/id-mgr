@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 
 	. "github.com/digisan/go-generics/v2"
@@ -31,10 +32,10 @@ func Init64bits(segments ...uint8) error {
 		shift := N - sum
 		_masks = append(_masks, F16>>uint64(shift))
 	}
-	fmt.Println("MASKS:", _masks)
+	fmt.Printf("MASKS: %016x\n", _masks)
 
 	_segs = genSegs(_masks)
-	fmt.Println("SEGS:", _segs)
+	fmt.Printf("SEGS : %016x\n", _segs)
 
 	// fmt.Println(genMasks(_segs))
 	if !reflect.DeepEqual(genMasks(_segs), _masks) {
@@ -216,7 +217,7 @@ func SearchIDByAlias(alias any, fromIDs ...ID) ID {
 }
 
 var (
-	exclChars = []string{"^", "|"}
+	exclChars = []string{"^", "|", ":", "[", "]"}
 )
 
 func validateAlias(alias any) bool {
@@ -346,19 +347,40 @@ func DelID(id ID) error {
 		return nil
 	}
 	if descIDs := id.Descendants(1); len(descIDs) > 0 {
-		return fmt.Errorf("%x has descendants [%x], cannot be deleted, nothing to delete", id, descIDs)
+		return fmt.Errorf("%x(%v) has descendants [%x], cannot be deleted, abort", id, id.Alias(), descIDs)
 	}
 	delete(mRecord, id)
+	// if parent, ok := id.Parent(); ok {
+	// 	mRecord[parent]--
+	// }
 	return nil
 }
 
-// DelIDViaAlias incurs updated WholeIDs
-func DelIDViaAlias(alias any) error {
+func DelIDs(ids ...ID) error {
+	for _, id := range ids {
+		if err := DelID(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// DelIDOnAlias incurs updated WholeIDs
+func DelIDOnAlias(alias any) error {
 	id := SearchIDByAlias(alias, WholeIDs()...)
 	if len(fmt.Sprint(alias)) > 0 && id == 0 {
 		return fmt.Errorf("alias [%s] cannot be found, nothing to delete", alias)
 	}
 	return DelID(id)
+}
+
+func DelIDsOnAlias(aliases ...any) error {
+	for _, alias := range aliases {
+		if err := DelIDOnAlias(alias); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BuildHierarchy incurs updated WholeIDs. building one super with multiple descendants (each descendant with single alias)
@@ -404,47 +426,56 @@ func RmAliases(self any, aliases ...any) error {
 	return err
 }
 
-func PrintHierarchy() string {
+func GenHierarchy(print bool) string {
 	// fmt.Println(mRecord)
 	// fmt.Println(WholeIDs())
 	lines := []string{}
-	for _, id := range WholeIDs() {
+	for i, id := range WholeIDs() {
 		lvl := id.level()
 		indent := strings.Repeat("\t", lvl)
 		aliasesStr := ""
 		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
 			aliasesStr = strings.Join(aliases, "^")
 		}
-		lines = append(lines, fmt.Sprintf("%s%d|%v", indent, id, aliasesStr))
-		// fmt.Printf("%s%d|%v\n", indent, id, aliasesStr)
+		lines = append(lines, fmt.Sprintf("%s%x|%v", indent, id, aliasesStr)) // generated string use hexadecimal id
+
+		if print {
+			fmt.Printf("%03d: %s%x|%v\n", i+1, indent, id, aliasesStr) // print with line number, use hexadecimal 0xid
+		}
 	}
 	rt := strings.Join(lines, "\n")
-	fmt.Println(rt)
 	return rt
 }
 
 func DumpHierarchy(fpath string) error {
-	out := fmt.Sprintln(_segs) + PrintHierarchy()
+	out := fmt.Sprintf("%016x\n", _segs) + GenHierarchy(false)
 	return os.WriteFile(fpath, []byte(out), os.ModePerm)
 }
 
-// FILL 1._segs, 2._masks，3.mRecord, 4.mAlias & REDO BuildHierarchy
+// FILL 1._segs, 2._masks，3.mAlias 4.mRecord & REDO BuildHierarchy
 func IngestHierarchy(fpath string) error {
 
 	_masks = []uint64{}
 	_segs = []uint64{}
 
+	var idxLine int
 	var err error
 	fd.FileLineScan(fpath, func(line string) (bool, string) {
+		idxLine++
 		if ln := strings.Trim(line, "[]"); len(ln) == len(line)-2 {
-			// fmt.Println(ln)
-			segs, ok := TypesAsAnyTryToTypes[uint64](strings.Split(ln, " "))
-			if !ok {
-				err = fmt.Errorf("ingested error: _segs")
-				return false, ""
+			fmt.Println(ln)
+
+			for _, seg_str := range strings.Split(ln, " ") {
+				seg, e := strconv.ParseUint(seg_str, 16, 64) // seg in dump file is hex
+				if e != nil {
+					err = fmt.Errorf("ingested error: _segs parsed error @%w", e)
+					return false, ""
+				}
+				_segs = append(_segs, seg)
 			}
-			_segs = segs
+
 			_masks = genMasks(_segs)
+
 			return true, ""
 		}
 
@@ -456,27 +487,35 @@ func IngestHierarchy(fpath string) error {
 		ln := strings.TrimSpace(line)
 		id_alias := strings.Split(ln, "|")
 
-		fmt.Println(id_alias)
+		fmt.Printf("--> %02d %v\n", idxLine, id_alias)
 
-		// mAlias
-		id, ok := AnyTryToType[uint64](id_alias[0])
-		if !ok {
-			err = fmt.Errorf("ingested error: id parsed error @%v", id_alias[0])
+		// *** mAlias ***
+		id, e := strconv.ParseUint(id_alias[0], 16, 64) // id in dump file are hex
+		if e != nil {
+			err = fmt.Errorf("ingested error: id parsed error @%w", e)
 			return false, ""
 		}
 		mAlias[ID(id)] = TypesAsAnyToAnys(strings.Split(id_alias[1], "^"))
 
-		// mRecord
-		if parent, ok := ID(id).Parent(); ok {
-			mRecord[parent]++
-		}
-		mRecord[ID(id)] = 0
-
 		return true, ""
+
 	}, "")
 
 	if len(_masks) == 0 || len(_segs) == 0 {
 		return fmt.Errorf("_masks or _segs ingested error")
 	}
+
+	// *** mRecord ***
+	ids, _ := MapToKVs(mAlias, func(ki ID, kj ID) bool { return ki < kj }, nil)
+	// fmt.Println(ids)
+	for _, id := range ids {
+		if _, ok := mRecord[id]; !ok {
+			mRecord[id] = 0
+		}
+		if parent, ok := id.Parent(); ok {
+			mRecord[parent]++
+		}
+	}
+
 	return err
 }

@@ -190,34 +190,39 @@ func TestBuildHierarchy(t *testing.T) {
 
 	lk.FailOnErr("%v", BuildHierarchy("", "C1", "C 3", "C  3"))
 	lk.FailOnErr("%v", BuildHierarchy("C1", "C12"))
-
 	lk.FailOnErr("%v", BuildHierarchy("", "C2"))
 	lk.FailOnErr("%v", BuildHierarchy("C2", "C13"))
-
 	lk.FailOnErr("%v", BuildHierarchy("", "C14"))
 	lk.FailOnErr("%v", BuildHierarchy("C14", "C141"))
-
 	lk.FailOnErr("%v", BuildHierarchy("C12", "C121"))
 	lk.FailOnErr("%v", BuildHierarchy("C12", "C122"))
 	lk.WarnOnErr("%v", BuildHierarchy("C121", "C1211", "C1212", "C1213"))
 	lk.WarnOnErr("%v", BuildHierarchy("C1213", "C1213-1", "C1213-2"))
+
 	AddAliases("C1213-2", "C1213-2X", "C1213-2Y", "C1213-2Z")
+
 	lk.WarnOnErr("%v", BuildHierarchy("C1213-2Z", "2ZZZ", "2XYZ"))
 
 	AddAliases("C121", "c121", "CC121")
+
 	// RmAliases("C121", "C121")
 	// fmt.Println("--->", GetAliases("C121"))
 
 	// RmAliases("C122", "C122")
 	// fmt.Println("--->", GetAliases("C122"))
 
-	PrintHierarchy()
 	fmt.Println("-----------------------------")
 
-	lk.WarnOnErr("%v", DelIDViaAlias("C1211"))
-	lk.WarnOnErr("%v", DelIDViaAlias("C122"))
+	GenHierarchy(true)
 
-	PrintHierarchy()
+	fmt.Println("-----------------------------")
+
+	lk.WarnOnErr("%v", DelIDsOnAlias("C1211", "C1212", "C1213"))
+	// fmt.Println(WholeIDs())
+
+	GenHierarchy(true)
+
+	fmt.Println("-----------------------------")
 
 	DumpHierarchy("dump.txt")
 }
@@ -228,22 +233,20 @@ func TestIngestHierarchy(t *testing.T) {
 	// 	fmt.Println(err)
 	// 	return
 	// } else {
-	// 	// fmt.Printf("%064b\n", masks)
-	// 	// fmt.Printf("%064b\n", segs)
+	// 	// fmt.Printf("%016x\n", masks)
+	// 	// fmt.Printf("%016x\n", segs)
 	// }
 
-	// fmt.Println(ID(0).Parent())
-	// fmt.Println(ID(1).Parent())
+	lk.FailOnErr("%v", IngestHierarchy("dump.txt"))
 
-	if err := IngestHierarchy("dump.txt"); err != nil {
-		fmt.Println(err)
-		return
-	}
+	fmt.Println(ID(0x11).Descendants(100))
+	fmt.Println(ID(0x11).Parent())
 
-	// fmt.Println("mAlias:", mAlias)
-	// fmt.Println("mRecord:", mRecord)
+	fmt.Println("mAlias:", mAlias)
+	fmt.Println("mRecord:", mRecord)
 
 	fmt.Println("--------------------------")
 
-	PrintHierarchy()
+	// fmt.Println(ID(0).Descendants(100))
+	GenHierarchy(true)
 }
