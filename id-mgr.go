@@ -3,9 +3,11 @@ package idmgr
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	. "github.com/digisan/go-generics/v2"
+	fd "github.com/digisan/gotk/file-dir"
 	"github.com/digisan/gotk/strs"
 )
 
@@ -13,8 +15,8 @@ const N uint8 = 64
 const F16 uint64 = 0xFFFFFFFFFFFFFFFF
 
 var (
-	masks = []uint64{}
-	segs  = []uint64{}
+	_masks = []uint64{}
+	_segs  = []uint64{}
 )
 
 // most left segment stores root class, then its descendants
@@ -27,10 +29,21 @@ func Init64bits(segments ...uint8) error {
 	for _, n := range segments {
 		sum += n
 		shift := N - sum
-		masks = append(masks, F16>>uint64(shift))
+		_masks = append(_masks, F16>>uint64(shift))
 	}
-	// fmt.Println(masks)
+	fmt.Println("MASKS:", _masks)
 
+	_segs = genSegs(_masks)
+	fmt.Println("SEGS:", _segs)
+
+	// fmt.Println(genMasks(_segs))
+	if !reflect.DeepEqual(genMasks(_segs), _masks) {
+		return fmt.Errorf("error: _masks & _segs are not consistent")
+	}
+	return nil
+}
+
+func genSegs(masks []uint64) (segs []uint64) {
 	for i, mask := range masks {
 		var seg uint64
 		if i == 0 {
@@ -41,9 +54,21 @@ func Init64bits(segments ...uint8) error {
 		// fmt.Printf("seg  %d: %016x\n\n", i, seg)
 		segs = append(segs, seg)
 	}
-	// fmt.Println(segs)
+	return
+}
 
-	return nil
+func genMasks(segs []uint64) (masks []uint64) {
+	for i, seg := range segs {
+		var mask uint64
+		if i == 0 {
+			mask = seg
+		} else {
+			mask = seg | masks[i-1]
+		}
+		// fmt.Printf("mask  %d: %016x\n\n", i, mask)
+		masks = append(masks, mask)
+	}
+	return
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -68,10 +93,10 @@ func (id ID) Exists() bool {
 }
 
 func (id ID) level() int {
-	for i, s := range Reverse(segs) {
+	for i, s := range Reverse(_segs) {
 		// fmt.Printf("---> %d %016x\n", i, s)
 		if uint64(id)&s != 0 {
-			return len(segs) - i - 1
+			return len(_segs) - i - 1
 		}
 	}
 	return -1
@@ -86,7 +111,7 @@ func (id ID) selfStartBitIdx() int {
 		return 0
 	}
 
-	mask := masks[lvl-1]
+	mask := _masks[lvl-1]
 	for i := 0; i < 64; i++ {
 		if mask == 0 {
 			return i
@@ -102,7 +127,7 @@ func (id ID) descAvailableBitIdx() int {
 		return 0
 	}
 
-	mask := masks[lvl]
+	mask := _masks[lvl]
 	for i := 0; i < 64; i++ {
 		if mask == 0 {
 			return i
@@ -114,9 +139,20 @@ func (id ID) descAvailableBitIdx() int {
 
 func (id ID) Ancestors() (ids []ID) {
 	for i := 0; i < id.level(); i++ {
-		ids = append(ids, id&ID(masks[i]))
+		ids = append(ids, id&ID(_masks[i]))
 	}
 	return
+}
+
+// 0 is valid parent for level0's ID
+func (id ID) Parent() (ID, bool) {
+	if ancestors := id.Ancestors(); len(ancestors) > 0 {
+		return ancestors[len(ancestors)-1], true
+	}
+	if id != 0 {
+		return 0, true
+	}
+	return 0, false
 }
 
 func (id ID) Descendants(nextGenerations int) []ID {
@@ -152,7 +188,7 @@ func (id ID) Alias() []any {
 }
 
 func WholeIDs() []ID {
-	return ID(0).Descendants(len(segs))
+	return ID(0).Descendants(len(_segs))
 }
 
 func aliasOccupied(alias any, byIDs ...ID) (bool, ID) {
@@ -180,7 +216,7 @@ func SearchIDByAlias(alias any, fromIDs ...ID) ID {
 }
 
 var (
-	exclChars = []string{"(", ")", "^"}
+	exclChars = []string{"^", "|"}
 )
 
 func validateAlias(alias any) bool {
@@ -254,8 +290,8 @@ func nextLvlDescCap(lvl int) int {
 	if lvl < 0 {
 		return -1
 	}
-	if lvl < len(segs) {
-		return int(trimLowZeroBin(segs[lvl]))
+	if lvl < len(_segs) {
+		return int(trimLowZeroBin(_segs[lvl]))
 	}
 	return 0
 }
@@ -379,8 +415,8 @@ func PrintHierarchy() string {
 		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
 			aliasesStr = strings.Join(aliases, "^")
 		}
-		lines = append(lines, fmt.Sprintf("%s%d(%v)", indent, id, aliasesStr))
-		// fmt.Printf("%s%d(%v)\n", indent, id, aliasesStr)
+		lines = append(lines, fmt.Sprintf("%s%d|%v", indent, id, aliasesStr))
+		// fmt.Printf("%s%d|%v\n", indent, id, aliasesStr)
 	}
 	rt := strings.Join(lines, "\n")
 	fmt.Println(rt)
@@ -388,9 +424,59 @@ func PrintHierarchy() string {
 }
 
 func DumpHierarchy(fpath string) error {
-	return os.WriteFile(fpath, []byte(PrintHierarchy()), os.ModePerm)
+	out := fmt.Sprintln(_segs) + PrintHierarchy()
+	return os.WriteFile(fpath, []byte(out), os.ModePerm)
 }
 
+// FILL 1._segs, 2._masks，3.mRecord, 4.mAlias & REDO BuildHierarchy
 func IngestHierarchy(fpath string) error {
-	return nil
+
+	_masks = []uint64{}
+	_segs = []uint64{}
+
+	var err error
+	fd.FileLineScan(fpath, func(line string) (bool, string) {
+		if ln := strings.Trim(line, "[]"); len(ln) == len(line)-2 {
+			// fmt.Println(ln)
+			segs, ok := TypesAsAnyTryToTypes[uint64](strings.Split(ln, " "))
+			if !ok {
+				err = fmt.Errorf("ingested error: _segs")
+				return false, ""
+			}
+			_segs = segs
+			_masks = genMasks(_segs)
+			return true, ""
+		}
+
+		if strings.Count(line, "|") != 1 {
+			err = fmt.Errorf("ingested error: id line incorrect format @%v", line)
+			return false, ""
+		}
+
+		ln := strings.TrimSpace(line)
+		id_alias := strings.Split(ln, "|")
+
+		fmt.Println(id_alias)
+
+		// mAlias
+		id, ok := AnyTryToType[uint64](id_alias[0])
+		if !ok {
+			err = fmt.Errorf("ingested error: id parsed error @%v", id_alias[0])
+			return false, ""
+		}
+		mAlias[ID(id)] = TypesAsAnyToAnys(strings.Split(id_alias[1], "^"))
+
+		// mRecord
+		if parent, ok := ID(id).Parent(); ok {
+			mRecord[parent]++
+		}
+		mRecord[ID(id)] = 0
+
+		return true, ""
+	}, "")
+
+	if len(_masks) == 0 || len(_segs) == 0 {
+		return fmt.Errorf("_masks or _segs ingested error")
+	}
+	return err
 }

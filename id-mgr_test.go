@@ -221,3 +221,29 @@ func TestBuildHierarchy(t *testing.T) {
 
 	DumpHierarchy("dump.txt")
 }
+
+func TestIngestHierarchy(t *testing.T) {
+
+	// if err := Init64bits(4, 4, 12, 4, 18, 6, 8, 4, 4); err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// } else {
+	// 	// fmt.Printf("%064b\n", masks)
+	// 	// fmt.Printf("%064b\n", segs)
+	// }
+
+	// fmt.Println(ID(0).Parent())
+	// fmt.Println(ID(1).Parent())
+
+	if err := IngestHierarchy("dump.txt"); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// fmt.Println("mAlias:", mAlias)
+	// fmt.Println("mRecord:", mRecord)
+
+	fmt.Println("--------------------------")
+
+	PrintHierarchy()
+}
