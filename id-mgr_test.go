@@ -217,7 +217,7 @@ func TestBuildHierarchy(t *testing.T) {
 
 	fmt.Println("-----------------------------")
 
-	lk.WarnOnErr("%v", DelIDsOnAlias("C1211", "C1212", "C1213"))
+	lk.WarnOnErr("%v", DelIDsOnAlias("C1211"))
 	// fmt.Println(WholeIDs())
 
 	GenHierarchy(true)
@@ -239,14 +239,24 @@ func TestIngestHierarchy(t *testing.T) {
 
 	lk.FailOnErr("%v", IngestHierarchy("dump.txt"))
 
-	fmt.Println(ID(0x11).Descendants(100))
-	fmt.Println(ID(0x11).Parent())
+	// fmt.Println(ID(0x11).Descendants(100))
+	// fmt.Println(ID(0x11).Parent())
 
-	fmt.Println("mAlias:", mAlias)
-	fmt.Println("mRecord:", mRecord)
+	fmt.Printf("mAlias : %x\n", mAlias)
+	// fmt.Println(len(mAlias))
+
+	fmt.Printf("mRecord: %x\n", mRecord)
+	// fmt.Println(len(mRecord))
 
 	fmt.Println("--------------------------")
 
-	// fmt.Println(ID(0).Descendants(100))
 	GenHierarchy(true)
+
+	fmt.Println("--------------------------")
+
+	lk.WarnOnErr("%v", BuildHierarchy("c121", "c121-1"))
+	lk.WarnOnErr("%v", DelIDsOnAlias("2XYZ"))
+
+	GenHierarchy(true)
+	DumpHierarchy("dump.txt")
 }
