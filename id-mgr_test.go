@@ -188,20 +188,31 @@ func TestBuildHierarchy(t *testing.T) {
 		// fmt.Printf("%064b\n", segs)
 	}
 
-	lk.FailOnErr("%v", BuildHierarchy("", "C1", "C 3", "C  3"))
-	lk.FailOnErr("%v", BuildHierarchy("C1", "C12"))
-	lk.FailOnErr("%v", BuildHierarchy("", "C2"))
-	lk.FailOnErr("%v", BuildHierarchy("C2", "C13"))
-	lk.FailOnErr("%v", BuildHierarchy("", "C14"))
-	lk.FailOnErr("%v", BuildHierarchy("C14", "C141"))
-	lk.FailOnErr("%v", BuildHierarchy("C12", "C121"))
-	lk.FailOnErr("%v", BuildHierarchy("C12", "C122"))
-	lk.WarnOnErr("%v", BuildHierarchy("C121", "C1211", "C1212", "C1213"))
-	lk.WarnOnErr("%v", BuildHierarchy("C1213", "C1213-1", "C1213-2"))
+	_, err := BuildHierarchy("", "C1", "C 3", "C  3")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C1", "C12")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("", "C2")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C2", "C13")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("", "C14")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C14", "C141")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C12", "C121")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C12", "C122")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C121", "C1211", "C1212", "C1213")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C1213", "C1213-1", "C1213-2")
+	lk.FailOnErr("%v", err)
 
 	AddAliases("C1213-2", "C1213-2X", "C1213-2Y", "C1213-2Z")
 
-	lk.WarnOnErr("%v", BuildHierarchy("C1213-2Z", "2ZZZ", "2XYZ"))
+	_, err = BuildHierarchy("C1213-2Z", "2ZZZ", "2XYZ")
+	lk.WarnOnErr("%v", err)
 
 	AddAliases("C121", "c121", "CC121")
 
@@ -223,6 +234,8 @@ func TestBuildHierarchy(t *testing.T) {
 	GenHierarchy(true)
 
 	fmt.Println("-----------------------------")
+
+	ChangeAlias("C13", "C1311")
 
 	DumpHierarchy("dump.txt")
 }
@@ -254,7 +267,8 @@ func TestIngestHierarchy(t *testing.T) {
 
 	fmt.Println("--------------------------")
 
-	lk.WarnOnErr("%v", BuildHierarchy("c121", "c121-1"))
+	_, err := BuildHierarchy("c121", "c121-1")
+	lk.WarnOnErr("%v", err)
 	lk.WarnOnErr("%v", DelIDsOnAlias("2XYZ"))
 
 	GenHierarchy(true)

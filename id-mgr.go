@@ -399,30 +399,32 @@ func DelIDsOnAlias(aliases ...any) error {
 	return nil
 }
 
-// BuildHierarchy incurs updated WholeIDs. building one super with multiple descendants (each descendant with single alias)
-func BuildHierarchy(super any, selves ...any) error {
+// BuildHierarchy incurs updated WholeIDs. building one super with multiple descendants (each descendant with single alias!)
+func BuildHierarchy(super any, descAliases ...any) ([]ID, error) {
 
 	fromIDs := WholeIDs()
 
 	sid := SearchIDByAlias(super, fromIDs...)
 	if sid == 0 && len(fmt.Sprint(super)) > 0 {
-		return fmt.Errorf("super must be empty string as root, but [%v] is given", super)
+		return nil, fmt.Errorf("super must be empty string as root, but [%v] is given", super)
 	}
 
-	for _, self := range selves {
+	rt := []ID{}
+	for _, self := range descAliases {
 		if err := CheckAlias([]any{self}, fromIDs...); err != nil {
-			return fmt.Errorf("%w, build nothing for [%s]-[%s]", err, super, selves)
+			return nil, fmt.Errorf("%w, build nothing for [%s]-[%s]", err, super, descAliases)
 		}
 		id, err := GenID(sid)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		fromIDs = WholeIDs()
 		if _, err := id.AddAliases([]any{self}, fromIDs...); err != nil {
-			return err
+			return nil, err
 		}
+		rt = append(rt, id)
 	}
-	return nil
+	return rt, nil
 }
 
 func AddAliases(self any, aliases ...any) error {
@@ -440,6 +442,16 @@ func RmAliases(self any, aliases ...any) error {
 	id := SearchIDByAlias(self)
 	_, err := id.RmAliases(aliases...)
 	return err
+}
+
+func ChangeAlias(old, new any) error {
+	if err := AddAliases(old, new); err != nil {
+		return err
+	}
+	if err := RmAliases(new, old); err != nil {
+		return err
+	}
+	return nil
 }
 
 func GenHierarchy(print bool) string {
