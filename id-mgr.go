@@ -551,10 +551,12 @@ func ChangeAlias(old, new any) error {
 }
 
 func GenHierarchy(print bool) string {
+
 	// fmt.Println(mRecord)
 	// fmt.Println(WholeIDs())
+
 	lines := []string{}
-	for i, id := range WholeIDs() {
+	for i, id := range AllHierarchyIDs() {
 		lvl := id.level()
 		indent := strings.Repeat("\t", lvl)
 		aliasesStr := ""
@@ -567,6 +569,25 @@ func GenHierarchy(print bool) string {
 			fmt.Printf("%03d: %s%x|%d|%v\n", i+1, indent, id, mRecord[id], aliasesStr) // print with line number, use hexadecimal 0xid
 		}
 	}
+
+	offset := len(lines)
+	for i, id := range AllStandaloneIDs() {
+		if i == 0 {
+			lines = append(lines, fmt.Sprintf("%s%x|%d|%v", "", MaxID(), mRecord[MaxID()], "standalone")) // generated string use hexadecimal id
+			if print {
+				fmt.Printf("%03d: %s%x|%d|%v\n", 999, "", MaxID(), mRecord[MaxID()], "standalone") // print with line number, use hexadecimal 0xid
+			}
+		}
+		aliasesStr := ""
+		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
+			aliasesStr = strings.Join(aliases, "^")
+		}
+		lines = append(lines, fmt.Sprintf("%s%x|%d|%v", "\t", id, mRecord[id], aliasesStr))
+		if print {
+			fmt.Printf("%03d: %s%x|%d|%v\n", i+1+offset, "\t", id, mRecord[id], aliasesStr) // print with line number, use hexadecimal 0xid
+		}
+	}
+
 	rt := strings.Join(lines, "\n")
 	return rt
 }
@@ -641,7 +662,7 @@ func IngestHierarchy(fpath string) error {
 
 	// *** mRecord[0] *** //
 	for _, id := range idGroup {
-		if pid, ok := id.Parent(); ok && pid == 0 {
+		if pid, ok := id.Parent(); ok && pid == 0 && !id.IsStandalone() {
 			mRecord[0]++
 		}
 	}
