@@ -2,6 +2,7 @@ package idmgr
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"reflect"
 	"strconv"
@@ -72,6 +73,34 @@ func genMasks(segs []uint64) (masks []uint64) {
 	return
 }
 
+func lowBits(n uint64, nLow uint) uint64 {
+	shift := 64 - nLow
+	checker := F16 >> uint64(shift)
+	return n & checker
+}
+
+func count1(n uint64) uint {
+	count := uint(0)
+	for i := 0; i < 64; i++ {
+		flag1 := uint64(0b01 << i)
+		if flag1&n == flag1 {
+			count++
+		}
+	}
+	return count
+}
+
+func countF(n uint64) uint {
+	count := uint(0)
+	for i := 0; i < 64; i += 4 {
+		flagF := uint64(0x0F << i)
+		if flagF&n == flagF {
+			count++
+		}
+	}
+	return count
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 type ID uint64
@@ -87,6 +116,10 @@ var (
 	// alias: key id, value: aliases
 	mAlias = make(map[ID][]any)
 )
+
+func MaxID() ID {
+	return math.MaxUint64
+}
 
 func (id ID) Exists() bool {
 	_, ok := mRecord[id]
@@ -201,8 +234,25 @@ func (id ID) Alias() []any {
 	return mAlias[id]
 }
 
-func WholeIDs() []ID {
+func AllHierarchyIDs() []ID {
 	return ID(0).Descendants(len(_segs))
+}
+
+func AllStandaloneIDs() []ID {
+	n := count1(_segs[0])
+	nStandalone := mRecord[MaxID()]
+	rt := []ID{}
+	for i := 1; i <= nStandalone; i++ {
+		id := ID(i << n)
+		if _, ok := mRecord[id]; ok {
+			rt = append(rt, id)
+		}
+	}
+	return rt
+}
+
+func WholeIDs() []ID {
+	return append(AllHierarchyIDs(), AllStandaloneIDs()...)
 }
 
 func aliasOccupied(alias any, byIDs ...ID) (bool, ID) {
@@ -348,7 +398,27 @@ func GenID(sid ID) (ID, error) {
 		}
 		id := makeID(sid, nUsed+1)
 		defer func() {
-			mRecord[sid] = nUsed + 1
+			mRecord[sid]++
+			mRecord[id] = 0
+		}()
+		return id, nil
+	}
+}
+
+func GenIDStandalone() (ID, error) {
+	n := count1(_segs[0])
+	sid := MaxID()
+	if nUsed, ok := mRecord[sid]; !ok || nUsed == 0 {
+		id := ID(0b01 << n)
+		defer func() {
+			mRecord[sid] = 1
+			mRecord[id] = 0
+		}()
+		return id, nil
+	} else {
+		id := ID((nUsed + 1) << n)
+		defer func() {
+			mRecord[sid]++
 			mRecord[id] = 0
 		}()
 		return id, nil
@@ -425,6 +495,32 @@ func BuildHierarchy(super any, descAliases ...any) ([]ID, error) {
 		rt = append(rt, id)
 	}
 	return rt, nil
+}
+
+func BuildStandalone(aliases ...any) ([]ID, error) {
+	fromIDs := WholeIDs()
+	if err := CheckAlias(aliases, fromIDs...); err != nil {
+		return nil, err
+	}
+	rt := []ID{}
+	for _, alias := range aliases {
+		id, err := GenIDStandalone()
+		if err != nil {
+			return nil, err
+		}
+		fromIDs = WholeIDs()
+		if _, err := id.AddAliases([]any{alias}, fromIDs...); err != nil {
+			return nil, err
+		}
+		rt = append(rt, id)
+	}
+	return rt, nil
+}
+
+func (id ID) IsStandalone() bool {
+	n := count1(_segs[0])
+	_, ok := mRecord[id]
+	return lowBits(uint64(id), n) == 0 && ok
 }
 
 func AddAliases(self any, aliases ...any) error {

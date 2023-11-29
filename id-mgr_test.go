@@ -9,6 +9,32 @@ import (
 
 // 1111111111111111111111111111111111111111111111111111111111111111
 
+func TestLenBits(t *testing.T) {
+	// for i := 1; i <= 15; i++ {
+	// 	fmt.Printf("low %d: %b\n", i, lowBits(0b1001111111, uint(i)))
+	// }
+
+	// fmt.Println(count1(0b11111111))
+	// fmt.Println(countF(0b11111111))
+
+	if err := Init64bits(4, 2, 14, 4, 18, 6, 8, 4, 4); err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		// fmt.Printf("%064b\n", masks)
+		// fmt.Printf("%064b\n", segs)
+	}
+
+	for i := 0; i < 10; i++ {
+		id, err := GenIDStandalone()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(id)
+	}
+}
+
 func TestInit64bits(t *testing.T) {
 	if err := Init64bits(4, 2, 14, 4, 18, 6, 8, 4, 4); err != nil {
 		fmt.Println(err)
@@ -273,4 +299,32 @@ func TestIngestHierarchy(t *testing.T) {
 
 	GenHierarchy(true)
 	DumpHierarchy("dump.txt")
+}
+
+func TestHierarchyWithStandalone(t *testing.T) {
+	if err := Init64bits(4, 4, 12, 4, 18, 6, 8, 4, 4); err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		// fmt.Printf("%064b\n", masks)
+		// fmt.Printf("%064b\n", segs)
+	}
+
+	_, err := BuildHierarchy("", "C1", "C 3", "C  3")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C1", "C12")
+	lk.FailOnErr("%v", err)
+	_, err = BuildStandalone("D1", "D2", "D3")
+	lk.FailOnErr("%v", err)
+
+	fmt.Println(ID(1).Parent())
+	fmt.Println(ID(1).IsStandalone())
+
+	fmt.Println(ID(0x10).Parent())
+	fmt.Println(ID(0x10).IsStandalone())
+
+	GenHierarchy(true)
+
+	DumpHierarchy("h1.txt")
+
 }
