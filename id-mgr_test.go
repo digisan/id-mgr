@@ -303,30 +303,30 @@ func TestIngestHierarchy(t *testing.T) {
 
 func TestHierarchyWithStandalone(t *testing.T) {
 
-	// if err := Init64bits(4, 4, 12, 4, 18, 6, 8, 4, 4); err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// } else {
-	// 	// fmt.Printf("%064b\n", masks)
-	// 	// fmt.Printf("%064b\n", segs)
-	// }
+	if err := Init64bits(4, 4, 12, 4, 18, 6, 8, 4, 4); err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		// fmt.Printf("%064b\n", masks)
+		// fmt.Printf("%064b\n", segs)
+	}
 
-	// _, err := BuildHierarchy("", "C1", "C 3", "C  3")
-	// lk.FailOnErr("%v", err)
-	// _, err = BuildHierarchy("C1", "C12")
-	// lk.FailOnErr("%v", err)
-	// _, err = BuildStandalone("D1", "D2", "D3")
-	// lk.FailOnErr("%v", err)
+	_, err := BuildHierarchy("", "C1", "C 3", "C  3")
+	lk.FailOnErr("%v", err)
+	_, err = BuildHierarchy("C1", "C12")
+	lk.FailOnErr("%v", err)
+	_, err = BuildStandalone("D1", "D2", "D3")
+	lk.FailOnErr("%v", err)
 
-	// // fmt.Println(ID(1).Parent())
-	// // fmt.Println(ID(1).IsStandalone())
+	// fmt.Println(ID(1).Parent())
+	// fmt.Println(ID(1).IsStandalone())
 
-	// // fmt.Println(ID(0x10).Parent())
-	// // fmt.Println(ID(0x10).IsStandalone())
+	// fmt.Println(ID(0x10).Parent())
+	// fmt.Println(ID(0x10).IsStandalone())
 
-	// GenHierarchy(true)
+	GenHierarchy(true)
 
-	// DumpHierarchy("h1.txt")
+	DumpHierarchy("h1.txt")
 
 	//////////////////////////////////////////////////////////
 
@@ -334,4 +334,17 @@ func TestHierarchyWithStandalone(t *testing.T) {
 	fmt.Printf("mAlias : %x\n", mAlias)
 	fmt.Printf("mRecord: %x\n", mRecord)
 	GenHierarchy(true)
+
+	fmt.Println(AllHierarchyIDs())
+	for _, id := range AllHierarchyIDs() {
+		fmt.Println(id)
+		fmt.Println(id.Parent())
+	}
+
+	fmt.Println(AllStandaloneIDs())
+	for _, id := range AllStandaloneIDs() {
+		fmt.Println(id)
+		fmt.Println(id.Parent())
+		id.Alias()
+	}
 }

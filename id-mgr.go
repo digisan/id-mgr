@@ -180,6 +180,9 @@ func (id ID) Ancestors() (ids []ID) {
 
 // 0 is valid parent for level0's ID
 func (id ID) Parent() (ID, bool) {
+	if id.IsStandalone() {
+		return MaxID(), true
+	}
 	if ancestors := id.Ancestors(); len(ancestors) > 0 {
 		return ancestors[len(ancestors)-1], true
 	}
@@ -231,6 +234,9 @@ func (id ID) AncestorsWithSelf() (ids []ID) {
 }
 
 func (id ID) Alias() []any {
+	if id == MaxID() {
+		return []any{"standalone"}
+	}
 	return mAlias[id]
 }
 
