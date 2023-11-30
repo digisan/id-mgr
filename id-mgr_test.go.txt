@@ -7,8 +7,6 @@ import (
 	lk "github.com/digisan/logkit"
 )
 
-// 1111111111111111111111111111111111111111111111111111111111111111
-
 func TestLenBits(t *testing.T) {
 	// for i := 1; i <= 15; i++ {
 	// 	fmt.Printf("low %d: %b\n", i, lowBits(0b1001111111, uint(i)))
@@ -313,10 +311,22 @@ func TestHierarchyWithStandalone(t *testing.T) {
 
 	_, err := BuildHierarchy("", "C1", "C 3", "C  3")
 	lk.FailOnErr("%v", err)
+
 	_, err = BuildHierarchy("C1", "C12")
 	lk.FailOnErr("%v", err)
+
 	_, err = BuildStandalone("D1", "D2", "D3")
 	lk.FailOnErr("%v", err)
+
+	_, err = BuildHierarchy("C12", "C1211")
+	lk.FailOnErr("%v", err)
+
+	_, err = BuildHierarchy("C12", "C1212")
+	lk.FailOnErr("%v", err)
+
+	lk.FailOnErr("%v", DelIDViaAlias("D2"))
+
+	lk.FailOnErr("%v", DelIDViaAlias("C1211"))
 
 	// fmt.Println(ID(1).Parent())
 	// fmt.Println(ID(1).IsStandalone())
@@ -328,20 +338,48 @@ func TestHierarchyWithStandalone(t *testing.T) {
 
 	DumpHierarchy("h1.txt")
 
-	//////////////////////////////////////////////////////////
-
-	lk.FailOnErr("%v", IngestHierarchy("h1.txt"))
-	fmt.Printf("mAlias : %x\n", mAlias)
-	fmt.Printf("mRecord: %x\n", mRecord)
-	GenHierarchy(true)
+	fmt.Println("------------------------------")
 
 	fmt.Println(AllHierarchyIDs())
+	fmt.Println(AllStandaloneIDs())
+	fmt.Println(WholeIDs())
+}
+
+func TestLoadHierarchyWithStandalone(t *testing.T) {
+
+	lk.FailOnErr("%v", IngestHierarchy("h1.txt"))
+
+	// fmt.Println(AllHierarchyIDs())
+	// fmt.Println(AllStandaloneIDs())
+	// fmt.Println(WholeIDs())
+
+	fmt.Printf("mAlias : %x\n", mAlias)
+	fmt.Printf("mRecord: %x\n", mRecord)
+
+	ChangeAlias("C 3", "C2")
+	ChangeAlias("C  3", "C3")
+
+	_, err := BuildStandalone("D2")
+	lk.FailOnErr("%v", err)
+
+	lk.FailOnErr("%v", DelIDViaAlias("D1"))
+
+	_, err = BuildStandalone("D4")
+	lk.FailOnErr("%v", err)
+
+	GenHierarchy(true)
+
+	fmt.Println("------------------------------")
+
+	// fmt.Println(AllHierarchyIDs())
 	for _, id := range AllHierarchyIDs() {
 		fmt.Println(id)
 		fmt.Println(id.Parent())
 	}
 
-	fmt.Println(AllStandaloneIDs())
+	fmt.Println("------------------------------")
+
+	// fmt.Println(AllStandaloneIDs())
 	for _, id := range AllStandaloneIDs() {
 		fmt.Println(id)
 		fmt.Println(id.Parent())
