@@ -33,8 +33,19 @@ func (id ID) Level() int {
 	return -1
 }
 
-func (id ID) String() string {
-	return fmt.Sprintf("id: %d(%x), level: %d, level-cap: %d", uint(id), uint(id), id.Level(), _cap_lvl[id.Level()])
+func (id ID) Print() {
+	parent, ok := id.Parent()
+	fmt.Printf("%03x(%016b), lvl: %d, cap for self: %d, bit-idx for desc: %d, cap for desc: %d, ancestors: %x, parent: %v(%x)\n",
+		uint(id),
+		uint(id),
+		id.Level(),
+		id.Cap4SelfLvl(),
+		id.BitIdx4Desc(),
+		id.Cap4DescLvl(),
+		id.Ancestors(),
+		ok,
+		parent,
+	)
 }
 
 // func (id ID) selfStartBitIdx() int {
@@ -55,7 +66,7 @@ func (id ID) String() string {
 // 	return 0
 // }
 
-func (id ID) descAvailableBitIdx() int {
+func (id ID) BitIdx4Desc() int {
 	lvl := id.Level()
 	if lvl == -1 {
 		return 0
@@ -67,10 +78,46 @@ func (id ID) descAvailableBitIdx() int {
 		}
 		mask = mask >> 1
 	}
-	return 0
+	return -1
 }
 
+func (id ID) Cap4DescLvl() int {
+	lvl := id.Level()
+	if lvl == -1 {
+		return int(_cap_lvl[0])
+	}
+	if lvl >= len(_cap_lvl)-1 {
+		return 0
+	}
+	return int(_cap_lvl[lvl+1])
+}
+
+func (id ID) Cap4SelfLvl() int {
+	lvl := id.Level()
+	if lvl == -1 {
+		return 1
+	}
+	return int(_cap_lvl[lvl])
+}
+
+// func (id ID) GenerateDescID() (ID, error) {
+// 	idx := id.BitIdx4Desc()
+// 	cap := id.Cap4DescLvl()
+// 	for i := 1; i <= cap; i++ {
+// 		desc := ID(i<<idx) | id
+// 		if _, ok := mRecord[desc]; !ok {
+//          // parent on mRecord
+// 			mRecord[desc] = 0
+// 			return desc, nil
+// 		}
+// 	}
+// 	return 0, fmt.Errorf("no space for a new descendant id")
+// }
+
 func (id ID) Ancestors() (ids []ID) {
+	if id.IsStandaloneFmt() {
+		return nil
+	}
 	for i := 0; i < id.Level(); i++ {
 		ids = append(ids, id&ID(_masks[i]))
 	}
@@ -79,7 +126,7 @@ func (id ID) Ancestors() (ids []ID) {
 
 // 0 is valid parent for level0's ID
 func (id ID) Parent() (ID, bool) {
-	if id.IsStandalone() {
+	if id.IsStandaloneFmt() {
 		return MaxID, true
 	}
 	if ancestors := id.Ancestors(); len(ancestors) > 0 {
@@ -165,9 +212,13 @@ func (id ID) RmAliases(aliases ...any) ([]any, error) {
 }
 
 func (id ID) IsStandalone() bool {
-	n := count1(_segs[0])
 	_, ok := mRecord[id]
-	return lowBits(uint64(id), n) == 0 && ok
+	return id.IsStandaloneFmt() && ok
+}
+
+func (id ID) IsStandaloneFmt() bool {
+	n := count1(_segs[0])
+	return lowBits(uint64(id), n) == 0
 }
 
 func HierarchyIDs() []ID {

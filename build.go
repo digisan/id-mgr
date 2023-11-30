@@ -3,7 +3,7 @@ package idmgr
 import "fmt"
 
 func makeID(sid ID, idx int) ID {
-	return ID(idx<<sid.descAvailableBitIdx()) | sid
+	return ID(idx<<sid.BitIdx4Desc()) | sid
 }
 
 func IsValidID(id ID) bool {
