@@ -1,4 +1,4 @@
-package idmgr
+package id
 
 func lowBits(n uint64, nLow uint) uint64 {
 	shift := 64 - nLow

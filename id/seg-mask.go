@@ -1,4 +1,4 @@
-package idmgr
+package id
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ var (
 )
 
 // most left segment stores root class, then its descendants
-func Init64bits(segsFromLow ...uint8) error {
+func init64bits(segsFromLow ...uint8) error {
 	if Sum(segsFromLow...) != 64 {
 		return fmt.Errorf("error: sum of segments must be 64")
 	}
@@ -32,10 +32,10 @@ func Init64bits(segsFromLow ...uint8) error {
 		shift := N - sum
 		_masks = append(_masks, F16>>uint64(shift))
 	}
-	fmt.Printf("MASKS: %016x\n", _masks)
+	// fmt.Printf("MASKS: %016x\n", _masks)
 
 	_segs = genSegs(_masks)
-	fmt.Printf("SEGS : %016x\n", _segs)
+	// fmt.Printf("SEGS : %016x\n", _segs)
 
 	// fmt.Println(genMasks(_segs))
 	if !reflect.DeepEqual(genMasks(_segs), _masks) {

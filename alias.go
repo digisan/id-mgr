@@ -2,9 +2,16 @@ package idmgr
 
 import (
 	"fmt"
+	"sync"
 
 	. "github.com/digisan/go-generics/v2"
 	"github.com/digisan/gotk/strs"
+	"github.com/digisan/id-mgr/id"
+)
+
+var (
+	// alias: key id, value: aliases
+	mAlias = sync.Map{} // make(map[ID][]any)
 )
 
 func AddAliases(self any, aliases ...any) error {
@@ -42,7 +49,7 @@ func validateAlias(alias any) bool {
 	return !strs.ContainsAny(fmt.Sprint(alias), exclChars...)
 }
 
-func aliasOccupied(alias any, byIDs ...ID) (bool, ID) {
+func aliasOccupied(alias any, byIDs ...id.ID) (bool, id.ID) {
 	if len(byIDs) == 0 {
 		byIDs = WholeIDs()
 	}
@@ -55,7 +62,7 @@ func aliasOccupied(alias any, byIDs ...ID) (bool, ID) {
 }
 
 // check alias conflict
-func CheckAlias(aliases []any, fromIDs ...ID) error {
+func CheckAlias(aliases []any, fromIDs ...id.ID) error {
 	if len(fromIDs) == 0 {
 		fromIDs = WholeIDs()
 	}
@@ -70,7 +77,7 @@ func CheckAlias(aliases []any, fromIDs ...ID) error {
 	return nil
 }
 
-func SearchIDByAlias(alias any, fromIDs ...ID) ID {
+func SearchIDByAlias(alias any, fromIDs ...id.ID) id.ID {
 	if len(fromIDs) == 0 {
 		fromIDs = WholeIDs()
 	}
@@ -81,3 +88,42 @@ func SearchIDByAlias(alias any, fromIDs ...ID) ID {
 	}
 	return 0
 }
+
+func (id ID) Alias() []any {
+	if id == MaxID {
+		return []any{"standalone"}
+	}
+	if typ := id.Type(); typ == ID_HRCHY_ALLOC || typ == ID_STDAL_ALLOC {
+		if v, ok := mAlias.Load(id); ok {
+			return v.([]any)
+		}
+	}
+	return []any{}
+}
+
+func (id ID) AddAliases(aliases []any, validRangeIDs ...ID) ([]any, error) {
+
+	if typ := id.Type(); typ == ID_HRCHY_ALLOC || typ == ID_STDAL_ALLOC {
+
+		// check alias conflict
+		if err := CheckAlias(aliases, validRangeIDs...); err != nil {
+			return id.Alias(), err
+		}
+
+		mAlias[id] = append(mAlias[id], aliases...)
+		mAlias[id] = Settify(mAlias[id]...)
+		return id.Alias(), nil
+	}
+
+	return nil, fmt.Errorf("error: %v doesn't exist, cannot do AddAlias", id)
+}
+
+// func (id ID) RmAliases(aliases ...any) ([]any, error) {
+// 	if !id.Exists() {
+// 		return nil, fmt.Errorf("error: %v doesn't exist, cannot do RmAlias", id)
+// 	}
+// 	mAlias[id] = Filter(id.Alias(), func(i int, e any) bool {
+// 		return NotIn(e, aliases...)
+// 	})
+// 	return id.Alias(), nil
+// }
