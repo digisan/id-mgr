@@ -65,3 +65,32 @@ func TestDescendants(t *testing.T) {
 	fmt.Println(StandaloneIDs())
 	fmt.Println(WholeIDs())
 }
+
+func TestSetID(t *testing.T) {
+	lk.FailOnErr("%v", Init(4, 3, 2, 7, 8, 18, 6, 8, 5, 3))
+
+	// lk.FailOnErr("%v", SetID(1))
+	// lk.FailOnErr("%v", SetID(2))
+	// lk.FailOnErr("%v", SetID(3))
+	// lk.FailOnErr("%v", SetID(16))
+	// lk.FailOnErr("%v", SetID(17))
+	// lk.FailOnErr("%v", SetID(18))
+	// lk.FailOnErr("%v", SetID(19))
+	// lk.FailOnErr("%v", SetID(20))
+
+	for i := 1; i < 50000; i++ {
+		// fmt.Printf("inserting...(0x%03x)\n", i)
+
+		// if i == 0x90 {
+		// 	fmt.Println("DEBUGGING...")
+		// }
+
+		lk.FailOnErr("%v", SetID(ID(i)))
+	}
+
+	fmt.Println("------------------------")
+
+	fmt.Println(HierarchyIDs())
+	fmt.Println(StandaloneIDs())
+	fmt.Println(WholeIDs())
+}

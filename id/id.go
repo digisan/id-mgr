@@ -20,6 +20,27 @@ const (
 	ID_UNKNOWN
 )
 
+func (t ID_TYPE) String() string {
+	switch t {
+	case ID_ROOT_HRCHY:
+		return "ID_ROOT_HRCHY"
+	case ID_ROOT_STDAL:
+		return "ID_ROOT_STDAL"
+	case ID_HRCHY_ALLOC:
+		return "ID_HRCHY_ALLOC"
+	case ID_HRCHY_UNALLOC:
+		return "ID_HRCHY_UNALLOC"
+	case ID_STDAL_ALLOC:
+		return "ID_STDAL_ALLOC"
+	case ID_STDAL_UNALLOC:
+		return "ID_STDAL_UNALLOC"
+	case ID_UNKNOWN:
+		return "ID_UNKNOWN"
+	default:
+		return "ID_UNKNOWN"
+	}
+}
+
 type ID uint64
 
 const MaxID = ID(math.MaxUint64)
@@ -67,14 +88,18 @@ func (id ID) Type() ID_TYPE {
 	}
 }
 
+func Level(id ID) int {
+	for i, seg := range Reverse(_segs) {
+		if uint64(id)&seg != 0 {
+			return len(_segs) - i - 1
+		}
+	}
+	return -1
+}
+
 func (id ID) Level() int {
 	if id.Type() == ID_HRCHY_ALLOC {
-		for i, seg := range Reverse(_segs) {
-			// fmt.Printf("---> %d %016x\n", i, seg)
-			if uint64(id)&seg != 0 {
-				return len(_segs) - i - 1
-			}
-		}
+		return Level(id)
 	}
 	return -1
 }
@@ -384,4 +409,52 @@ func WholeIDs() []ID {
 	hIDs := HierarchyIDs()
 	sIDs := StandaloneIDs()
 	return append(hIDs, sIDs...)
+}
+
+///////////////////////////////////////////////////////////////////////
+
+func SetID(id ID) error {
+	if In(id.Type(), ID_HRCHY_UNALLOC, ID_STDAL_UNALLOC) {
+		var parent ID
+		if lvl := Level(id); lvl == 0 {
+			parent = 0
+		} else if id > 0 && ID(_segs[0])&id == 0 {
+			parent = MaxID
+		} else {
+			mask := _masks[lvl-1]
+			parent = ID(mask & uint64(id))
+		}
+
+		// fmt.Printf("id(%x) - parent type: %s\n", id, parent.Type())
+
+		switch parent.Type() {
+		case ID_ROOT_HRCHY, ID_HRCHY_ALLOC:
+			if NotIn(id, parent.Descendants(100)...) {
+				if v, ok := mRecord.Load(parent); ok {
+					mRecord.Store(id, 0)
+					mRecord.Store(parent, v.(int)+1)
+				} else {
+					return fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
+				}
+				return nil
+			} else {
+				return fmt.Errorf("id(0x%x) already exists", id)
+			}
+		case ID_ROOT_STDAL:
+			if NotIn(id, StandaloneIDs()...) {
+				if v, ok := mRecord.Load(MaxID); ok {
+					mRecord.Store(id, 0)
+					mRecord.Store(MaxID, v.(int)+1)
+				} else {
+					return fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
+				}
+				return nil
+			} else {
+				return fmt.Errorf("id(0x%x) already exists", id)
+			}
+		default:
+			return fmt.Errorf("parent(0x%x) doesn't exist", parent)
+		}
+	}
+	return fmt.Errorf("id(0x%x) cannot be set into as invalid", id)
 }
