@@ -255,13 +255,15 @@ func (id ID) iterDesc(out *[]ID) {
 	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
 		idx := id.BitIdx4NextDescLvl()
 		cap := id.Cap4NextDescLvl()
+		count := 0
 		for i := uint64(1); i <= cap; i++ {
 			desc_id := ID(i<<idx) | id
 			if desc_id.Type() == ID_HRCHY_ALLOC {
 				*out = append(*out, desc_id)
+				count++
 			}
 			desc_id.iterDesc(out)
-			if n := id.ChildrenCount(); i == uint64(n) || n <= 0 {
+			if n := id.ChildrenCount(); uint64(count) == uint64(n) || n <= 0 {
 				break
 			}
 		}
@@ -342,12 +344,6 @@ func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
 
 ///////////////////////////////////////////////////////////////////////
 
-func HookIDTree(id ID, tree ...ID) error {
-	panic("not implemented")
-}
-
-///////////////////////////////////////////////////////////////////////
-
 func BitIdx4Stdal() int {
 	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= 64 {
 		return -1
@@ -413,7 +409,7 @@ func WholeIDs() []ID {
 
 ///////////////////////////////////////////////////////////////////////
 
-func SetID(id ID) error {
+func SetID(id ID) (ID, error) {
 	if In(id.Type(), ID_HRCHY_UNALLOC, ID_STDAL_UNALLOC) {
 		var parent ID
 		if lvl := Level(id); lvl == 0 {
@@ -434,11 +430,11 @@ func SetID(id ID) error {
 					mRecord.Store(id, 0)
 					mRecord.Store(parent, v.(int)+1)
 				} else {
-					return fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
+					return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
 				}
-				return nil
+				return id, nil
 			} else {
-				return fmt.Errorf("id(0x%x) already exists", id)
+				return 0, fmt.Errorf("id(0x%x) already exists", id)
 			}
 		case ID_ROOT_STDAL:
 			if NotIn(id, StandaloneIDs()...) {
@@ -446,15 +442,30 @@ func SetID(id ID) error {
 					mRecord.Store(id, 0)
 					mRecord.Store(MaxID, v.(int)+1)
 				} else {
-					return fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
+					return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
 				}
-				return nil
+				return id, nil
 			} else {
-				return fmt.Errorf("id(0x%x) already exists", id)
+				return 0, fmt.Errorf("id(0x%x) already exists", id)
 			}
 		default:
-			return fmt.Errorf("parent(0x%x) doesn't exist", parent)
+			return 0, fmt.Errorf("parent(0x%x) doesn't exist", parent)
 		}
 	}
-	return fmt.Errorf("id(0x%x) cannot be set into as invalid", id)
+	return 0, fmt.Errorf("id(0x%x) cannot be set", id)
+}
+
+func (id *ID) leftShift(nSeg int) error {
+	if len(_masks) <= 1 || nSeg == 0 || nSeg >= len(_masks) {
+		return fmt.Errorf("nSeg(%d) error or segs error", nSeg)
+	}
+	nShiftBit := count1(_masks[nSeg-1])
+	*id <<= nShiftBit
+	return nil
+}
+
+///////////////////////////////////////////////////////////////////////
+
+func HookIDTree(id ID, tree ...ID) error {
+	panic("not implemented")
 }
