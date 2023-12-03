@@ -11,10 +11,10 @@ import (
 type ID_TYPE int
 
 const (
-	ID_ROOT_HRCHY ID_TYPE = iota
-	ID_ROOT_STDAL
+	ID_HRCHY_ROOT ID_TYPE = iota
 	ID_HRCHY_ALLOC
 	ID_HRCHY_UNALLOC
+	ID_STDAL_ROOT
 	ID_STDAL_ALLOC
 	ID_STDAL_UNALLOC
 	ID_UNKNOWN
@@ -22,10 +22,10 @@ const (
 
 func (t ID_TYPE) String() string {
 	switch t {
-	case ID_ROOT_HRCHY:
-		return "ID_ROOT_HRCHY"
-	case ID_ROOT_STDAL:
-		return "ID_ROOT_STDAL"
+	case ID_HRCHY_ROOT:
+		return "ID_HRCHY_ROOT"
+	case ID_STDAL_ROOT:
+		return "ID_STDAL_ROOT"
 	case ID_HRCHY_ALLOC:
 		return "ID_HRCHY_ALLOC"
 	case ID_HRCHY_UNALLOC:
@@ -71,10 +71,10 @@ func (id ID) Exists() bool {
 
 func (id ID) Type() ID_TYPE {
 	if id == 0 {
-		return ID_ROOT_HRCHY
+		return ID_HRCHY_ROOT
 	}
 	if id == MaxID {
-		return ID_ROOT_STDAL
+		return ID_STDAL_ROOT
 	}
 	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= 64 {
 		return ID_UNKNOWN
@@ -105,12 +105,20 @@ func (id ID) Level() int {
 }
 
 func (id ID) ChildrenCount() int {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_STDAL_ALLOC, ID_ROOT_HRCHY, ID_ROOT_STDAL) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_STDAL_ALLOC, ID_HRCHY_ROOT, ID_STDAL_ROOT) {
 		if v, ok := mRecord.Load(id); ok {
 			return v.(int)
 		}
 	}
 	return -1
+}
+
+func (id ID) Part(level int) ID {
+	s := id & ID(_segs[level])
+	if level == 0 {
+		return s
+	}
+	return s >> count1(_masks[level-1])
 }
 
 // func (id ID) Print() {
@@ -147,7 +155,7 @@ func (id ID) BitIdx4TopLvl() int {
 }
 
 func (id ID) BitIdx4NextDescLvl() int {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		lvl := id.Level()
 		if lvl == -1 {
 			return 0
@@ -175,7 +183,7 @@ func (id ID) Cap4TopLvl() uint64 {
 }
 
 func (id ID) Cap4NextDescLvl() uint64 {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		lvl := id.Level()
 		if lvl == -1 {
 			return _cap_lvl[0]
@@ -189,7 +197,7 @@ func (id ID) Cap4NextDescLvl() uint64 {
 }
 
 func (id ID) GenDescID() (ID, error) {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		idx := id.BitIdx4NextDescLvl()
 		cap := id.Cap4NextDescLvl()
 		for i := uint64(1); i <= cap; i++ {
@@ -211,6 +219,70 @@ func (id ID) GenDescID() (ID, error) {
 		return 0, fmt.Errorf("no space for a new descendant id(%x)", id)
 	}
 	return 0, fmt.Errorf("only root or allocated hierarchy id can generate descendant, id(%x) cannot do", id)
+}
+
+func (id ID) AvailableDescID() (ID, error) {
+	desc, err := id.GenDescID()
+	if err != nil {
+		return 0, err
+	}
+	removed, err := DeleteID(desc, true)
+	if err != nil {
+		return 0, err
+	}
+	if len(removed) != 1 || removed[0] != desc {
+		return 0, fmt.Errorf("desc(%x) from id(%x) deleted error", desc, id)
+	}
+	return desc, nil
+}
+
+// return new hierarchy branch
+func (id ID) CopyBranch(bid ID) ([]ID, error) {
+	node := id
+	if NotIn(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
+		return nil, fmt.Errorf("id(0x%x) is invalid ID, cannot do CopyBranch", id)
+	}
+	if NotIn(bid.Type(), ID_HRCHY_ALLOC) {
+		return nil, fmt.Errorf("bid(0x%x) is invalid ID, cannot do CopyBranch", bid)
+	}
+	rt := ID(0)
+	mTree := bid.TreeDescription()
+	for _, desc := range bid.DescendantsWithSelf(100) {
+		var (
+			nid ID
+			err error
+		)
+		if n, ok := mTree[desc]; ok && n == 0 {
+			if nid, err = id.GenDescID(); err != nil {
+				return nil, err
+			}
+			if rt == 0 {
+				rt = nid
+			}
+		}
+		for i := 0; i < mTree[desc]; i++ {
+			if nid, err = id.GenDescID(); err != nil {
+				return nil, err
+			}
+			if rt == 0 {
+				rt = nid
+			}
+		}
+		id = nid
+	}
+	return append([]ID{node}, rt.DescendantsWithSelf(100)...), nil
+}
+
+// return new hierarchy branch
+func (id ID) TransplantBranch(bid ID) ([]ID, error) {
+	nid, err := id.CopyBranch(bid)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := DeleteID(bid, true); err != nil {
+		return nil, err
+	}
+	return nid, nil
 }
 
 func (id ID) Ancestors() (ids []ID) {
@@ -252,7 +324,7 @@ func (id ID) Parent() (ID, bool) {
 }
 
 func (id ID) iterDesc(out *[]ID) {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		idx := id.BitIdx4NextDescLvl()
 		cap := id.Cap4NextDescLvl()
 		count := 0
@@ -271,7 +343,7 @@ func (id ID) iterDesc(out *[]ID) {
 }
 
 func (id ID) Descendants(nextGenerations int) []ID {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		rt := []ID{}
 		id.iterDesc(&rt)
 		nd := id.Level() + nextGenerations
@@ -283,15 +355,15 @@ func (id ID) Descendants(nextGenerations int) []ID {
 }
 
 func (id ID) DescendantsWithSelf(nextGenerations int) []ID {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		return append([]ID{id}, id.Descendants(nextGenerations)...)
 	}
 	return nil
 }
 
 func (id ID) PrintDescendants(nextGenerations int, inclSelf bool) {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_ROOT_HRCHY) {
-		descendants := []ID{}
+	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
+		var descendants []ID
 		if inclSelf {
 			descendants = id.DescendantsWithSelf(nextGenerations)
 		} else {
@@ -310,10 +382,20 @@ func (id ID) PrintDescendants(nextGenerations int, inclSelf bool) {
 	}
 }
 
+func (id ID) TreeDescription() map[ID]int {
+	rt := make(map[ID]int)
+	for _, desc := range id.DescendantsWithSelf(100) {
+		if n, ok := mRecord.Load(desc); ok {
+			rt[desc] = n.(int)
+		}
+	}
+	return rt
+}
+
 ///////////////////////////////////////////////////////////////////////
 
 func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
-	if In(id.Type(), ID_ROOT_HRCHY, ID_ROOT_STDAL) {
+	if In(id.Type(), ID_HRCHY_ROOT, ID_STDAL_ROOT) {
 		return nil, fmt.Errorf("root id cannot be deleted")
 	}
 	if !inclDesc {
@@ -409,63 +491,68 @@ func WholeIDs() []ID {
 
 ///////////////////////////////////////////////////////////////////////
 
+// if id exists, do nothing and no error
 func SetID(id ID) (ID, error) {
-	if In(id.Type(), ID_HRCHY_UNALLOC, ID_STDAL_UNALLOC) {
-		var parent ID
-		if lvl := Level(id); lvl == 0 {
-			parent = 0
-		} else if id > 0 && ID(_segs[0])&id == 0 {
-			parent = MaxID
-		} else {
-			mask := _masks[lvl-1]
-			parent = ID(mask & uint64(id))
-		}
-
-		// fmt.Printf("id(%x) - parent type: %s\n", id, parent.Type())
-
-		switch parent.Type() {
-		case ID_ROOT_HRCHY, ID_HRCHY_ALLOC:
-			if NotIn(id, parent.Descendants(100)...) {
-				if v, ok := mRecord.Load(parent); ok {
-					mRecord.Store(id, 0)
-					mRecord.Store(parent, v.(int)+1)
-				} else {
-					return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
-				}
-				return id, nil
-			} else {
-				return 0, fmt.Errorf("id(0x%x) already exists", id)
-			}
-		case ID_ROOT_STDAL:
-			if NotIn(id, StandaloneIDs()...) {
-				if v, ok := mRecord.Load(MaxID); ok {
-					mRecord.Store(id, 0)
-					mRecord.Store(MaxID, v.(int)+1)
-				} else {
-					return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
-				}
-				return id, nil
-			} else {
-				return 0, fmt.Errorf("id(0x%x) already exists", id)
-			}
-		default:
-			return 0, fmt.Errorf("parent(0x%x) doesn't exist", parent)
-		}
+	// if In(id.Type(), ID_HRCHY_UNALLOC, ID_STDAL_UNALLOC) {
+	var parent ID
+	if lvl := Level(id); lvl == 0 {
+		parent = 0
+	} else if id > 0 && ID(_segs[0])&id == 0 {
+		parent = MaxID
+	} else {
+		mask := _masks[lvl-1]
+		parent = ID(mask & uint64(id))
 	}
-	return 0, fmt.Errorf("id(0x%x) cannot be set", id)
-}
 
-func (id *ID) leftShift(nSeg int) error {
-	if len(_masks) <= 1 || nSeg == 0 || nSeg >= len(_masks) {
-		return fmt.Errorf("nSeg(%d) error or segs error", nSeg)
+	// fmt.Printf("id(%x) - parent type: %s\n", id, parent.Type())
+
+	switch parent.Type() {
+	case ID_HRCHY_ROOT, ID_HRCHY_ALLOC:
+		if NotIn(id, parent.Descendants(100)...) {
+			if v, ok := mRecord.Load(parent); ok {
+				mRecord.Store(id, 0)
+				mRecord.Store(parent, v.(int)+1)
+			} else {
+				return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
+			}
+			return id, nil
+		}
+	case ID_STDAL_ROOT:
+		if NotIn(id, StandaloneIDs()...) {
+			if v, ok := mRecord.Load(MaxID); ok {
+				mRecord.Store(id, 0)
+				mRecord.Store(MaxID, v.(int)+1)
+			} else {
+				return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
+			}
+			return id, nil
+		}
+	default:
+		return 0, fmt.Errorf("parent(0x%x) doesn't exist", parent)
 	}
-	nShiftBit := count1(_masks[nSeg-1])
-	*id <<= nShiftBit
-	return nil
+	// }
+	return id, nil // fmt.Errorf("id(0x%x) already exists, SetID abort", id)
 }
 
-///////////////////////////////////////////////////////////////////////
+// here the id could be temp id, i.e not existing. but still need to be shifted
+// func (id *ID) leftShift(nSeg int, check bool) (ID, error) {
+// 	if check && id.Type() != ID_HRCHY_ALLOC {
+// 		return 0, fmt.Errorf("id(%x) is not existing", *id)
+// 	}
+// 	if len(_masks) <= 1 || nSeg >= len(_masks) {
+// 		return 0, fmt.Errorf("nSeg(%d) error or segs error", nSeg)
+// 	}
+// 	if nSeg == 0 {
+// 		return *id, nil
+// 	}
+// 	nShiftBit := count1(_masks[nSeg-1])
+// 	*id <<= nShiftBit
+// 	return *id, nil
+// }
 
-func HookIDTree(id ID, tree ...ID) error {
-	panic("not implemented")
-}
+// func newLowSegID(id, low ID) ID {
+// 	low = low & ID(_segs[0])
+// 	r_seg0 := ^_segs[0]
+// 	id_low0 := r_seg0 & uint64(id)
+// 	return ID(id_low0 | uint64(low))
+// }
