@@ -125,27 +125,50 @@ func AddAlias(self any, aliases ...any) error {
 	return id.AddAlias(aliases...)
 }
 
-// each alias for a single descendant
-func CreateDescWithAlias(self any, aliases ...any) error {
-	if self == "" {
-		for _, alias := range aliases {
-			nid, err := ID(0).GenDescID()
-			if err != nil {
-				return err
-			}
-			if err := nid.AddAlias(alias); err != nil {
-				return err
-			}
+// create ONE descendant of super with multiple input aliases
+func CreateOneDescWithAlias(super any, aliases ...any) error {
+	if super == "" {
+		nid, err := ID(0).GenDescID()
+		if err != nil {
+			return err
 		}
-		return nil
+		return nid.AddAlias(aliases...)
 	}
 
-	id, ok := SearchIDByAlias(self)
+	sid, ok := SearchIDByAlias(super)
 	if !ok {
-		return fmt.Errorf("cannot find id by alias(%v)", self)
+		return fmt.Errorf("cannot find id by alias(%v)", super)
 	}
+	nid, err := sid.GenDescID()
+	if err != nil {
+		return err
+	}
+	return nid.AddAlias(aliases...)
+}
+
+// create ONE standalone with multiple input aliases
+func CreateOneStdalWithAlias(aliases ...any) error {
+	nid, err := GenStdalID()
+	if err != nil {
+		return err
+	}
+	return nid.AddAlias(aliases...)
+}
+
+// Create MULTIPLE descendants, and each descendant with one alias
+func BuildHierarchy(super any, aliases ...any) error {
 	for _, alias := range aliases {
-		if err := ID(id).AddAlias(alias); err != nil {
+		if err := CreateOneDescWithAlias(super, alias); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Create MULTIPLE standalone id, and each id with one alias
+func BuildStandalone(aliases ...any) error {
+	for _, alias := range aliases {
+		if err := CreateOneStdalWithAlias(alias); err != nil {
 			return err
 		}
 	}

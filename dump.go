@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	. "github.com/digisan/go-generics/v2"
+	. "github.com/digisan/id-mgr/id"
 )
 
 func GenIDTree(print bool) string {
@@ -21,10 +22,10 @@ func GenIDTree(print bool) string {
 		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
 			aliasesStr = strings.Join(aliases, "^")
 		}
-		lines = append(lines, fmt.Sprintf("%s%x|%d|%v", indent, id, mRecord[id], aliasesStr)) // generated string use hexadecimal id
+		lines = append(lines, fmt.Sprintf("%s%x|%v", indent, id, aliasesStr)) // generated string use hexadecimal id
 
 		if print {
-			fmt.Printf("%03d: %s%x|%d|%v\n", i+1, indent, id, mRecord[id], aliasesStr) // print with line number, use hexadecimal 0xid
+			fmt.Printf("%03d: %s%x|%v\n", i+1, indent, id, aliasesStr) // print with line number, use hexadecimal 0xid
 		}
 	}
 
@@ -34,9 +35,9 @@ func GenIDTree(print bool) string {
 		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
 			aliasesStr = strings.Join(aliases, "^")
 		}
-		lines = append(lines, fmt.Sprintf("%s%x|%d|%v", "\t", id, mRecord[id], aliasesStr))
+		lines = append(lines, fmt.Sprintf("%s%x|%v", "\t", id, aliasesStr))
 		if print {
-			fmt.Printf("%03d: %s%x|%d|%v\n", i+1+offset, "\t", id, mRecord[id], aliasesStr) // print with line number, use hexadecimal 0xid
+			fmt.Printf("%03d: %s%x|%v\n", i+1+offset, "\t", id, aliasesStr) // print with line number, use hexadecimal 0xid
 		}
 	}
 

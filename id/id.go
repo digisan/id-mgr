@@ -555,6 +555,18 @@ func DeleteIDs(ids ...ID) error {
 	return nil
 }
 
+func IsValidID(id ID) bool {
+	if id.Type() == ID_STDAL_ALLOC {
+		return true
+	}
+	for _, id := range id.Ancestors(true) {
+		if NotIn(id.Type(), ID_HRCHY_ROOT, ID_HRCHY_ALLOC) {
+			return false
+		}
+	}
+	return len(id.Ancestors(true)) > 0
+}
+
 // here the id could be temp id, i.e not existing. but still need to be shifted
 // func (id *ID) leftShift(nSeg int, check bool) (ID, error) {
 // 	if check && id.Type() != ID_HRCHY_ALLOC {
