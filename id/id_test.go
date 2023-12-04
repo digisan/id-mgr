@@ -153,7 +153,7 @@ func TestDescTree(t *testing.T) {
 	fmt.Printf("available: %x %v\n", aid, err)
 
 	// lk.FailOnErr("%v", CopyBranch(17, 2))
-	lk.FailOnErr("%v", Transplant(17, 3))
+	lk.FailOnErr("%v", Transplant(17, 2))
 
 	fmt.Println("------------------------")
 	fmt.Println(HierarchyIDs())

@@ -328,38 +328,6 @@ func (id ID) DescendantsCount(inclSelf bool) (counts []int) {
 
 ///////////////////////////////////////////////////////////////////////
 
-func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
-	if In(id.Type(), ID_HRCHY_ROOT, ID_STDAL_ROOT) {
-		return nil, fmt.Errorf("root id cannot be deleted")
-	}
-	if !inclDesc {
-		if id.ChildrenCount() > 0 {
-			return nil, fmt.Errorf("id(%x) has children, cannot be deleted", id)
-		}
-		if sid, ok := id.Parent(); ok {
-			n, ok := mRecord.Load(sid)
-			if !ok {
-				return nil, fmt.Errorf("id's parent(%x) record error", sid)
-			}
-			mRecord.Store(sid, n.(int)-1)
-			mRecord.Delete(id)
-			rt = []ID{id}
-			// fmt.Printf("(0x%x) is deleted\n", id)
-		}
-	} else {
-		// fmt.Println(id.Descendants(100, true))
-		for _, desc := range Reverse(id.Descendants(100, true)) {
-			if _, err := DeleteID(desc, false); err != nil {
-				return nil, err
-			}
-			rt = append(rt, desc)
-		}
-	}
-	return rt, nil
-}
-
-///////////////////////////////////////////////////////////////////////
-
 func BitIdx4Stdal() int {
 	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= 64 {
 		return -1
@@ -504,8 +472,6 @@ func Transplant(oriNode, dstNode ID) error {
 	return nil
 }
 
-///////////////////////////////////////////////////////////////////////
-
 // if id exists, do nothing and no error
 func SetID(id ID) (ID, error) {
 	// if In(id.Type(), ID_HRCHY_UNALLOC, ID_STDAL_UNALLOC) {
@@ -547,6 +513,36 @@ func SetID(id ID) (ID, error) {
 	}
 	// }
 	return id, nil // fmt.Errorf("id(0x%x) already exists, SetID abort", id)
+}
+
+func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
+	if In(id.Type(), ID_HRCHY_ROOT, ID_STDAL_ROOT) {
+		return nil, fmt.Errorf("root id cannot be deleted")
+	}
+	if !inclDesc {
+		if id.ChildrenCount() > 0 {
+			return nil, fmt.Errorf("id(%x) has children, cannot be deleted", id)
+		}
+		if sid, ok := id.Parent(); ok {
+			n, ok := mRecord.Load(sid)
+			if !ok {
+				return nil, fmt.Errorf("id's parent(%x) record error", sid)
+			}
+			mRecord.Store(sid, n.(int)-1)
+			mRecord.Delete(id)
+			rt = []ID{id}
+			// fmt.Printf("(0x%x) is deleted\n", id)
+		}
+	} else {
+		// fmt.Println(id.Descendants(100, true))
+		for _, desc := range Reverse(id.Descendants(100, true)) {
+			if _, err := DeleteID(desc, false); err != nil {
+				return nil, err
+			}
+			rt = append(rt, desc)
+		}
+	}
+	return rt, nil
 }
 
 // here the id could be temp id, i.e not existing. but still need to be shifted

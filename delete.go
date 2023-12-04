@@ -2,32 +2,6 @@ package idmgr
 
 import "fmt"
 
-func DelID(id ID) error {
-
-	if _, ok := mRecord[id]; !ok {
-		return nil
-	}
-
-	// mRecord for standalone, adjust it
-	if id.IsStandalone() {
-		delete(mRecord, id)
-		delete(mAlias, id)
-		mRecord[MaxID]--
-	} else {
-		if descIDs := id.Descendants(1); len(descIDs) > 0 {
-			return fmt.Errorf("%x(%v) has descendants [%x], cannot delete, abort", id, id.Alias(), descIDs)
-		}
-		delete(mRecord, id)
-		delete(mAlias, id)
-		// BUT, DO NOT modify parent mRecord for hierarchy!!!
-		// if parent, ok := id.Parent(); ok {
-		// 	mRecord[parent]--
-		// }
-	}
-
-	return nil
-}
-
 func DelIDs(ids ...ID) error {
 	for _, id := range ids {
 		if err := DelID(id); err != nil {
