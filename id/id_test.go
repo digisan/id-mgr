@@ -7,32 +7,48 @@ import (
 	lk "github.com/digisan/logkit"
 )
 
+func init() {
+	fmt.Println("init...")
+	lk.FailOnErr("%v", Init(4, 5, 7, 8, 18, 6, 8, 5, 3))
+
+	id, err := ID(0).GenDescID()
+	lk.FailOnErr("%v", err)
+	id, err = ID(id).GenDescID()
+	lk.FailOnErr("%v", err)
+	id, err = ID(id).GenDescID()
+	lk.FailOnErr("%v", err)
+	id, err = ID(id).GenDescID()
+	lk.FailOnErr("%v", err)
+	_, err = ID(id).GenDescID()
+	lk.FailOnErr("%v", err)
+	id, err = ID(17).GenDescID()
+	lk.FailOnErr("%v", err)
+	_, err = ID(id).GenDescID()
+	lk.FailOnErr("%v", err)
+	_, err = ID(0).GenDescID()
+	lk.FailOnErr("%v", err)
+	_, err = ID(0).GenDescID()
+	lk.FailOnErr("%v", err)
+	_, err = ID(0).GenDescID()
+	lk.FailOnErr("%v", err)
+	_, err = ID(2).GenDescID()
+	lk.FailOnErr("%v", err)
+
+	fmt.Println("------------------------")
+	fmt.Println(HierarchyIDs())
+	fmt.Println(StandaloneIDs())
+	fmt.Println(WholeIDs())
+	fmt.Println("------------------------")
+}
+
 func TestDescendants(t *testing.T) {
 
-	lk.FailOnErr("%v", Init(4, 3, 2, 7, 8, 18, 6, 8, 5, 3))
+	fmt.Println(ID(16843281).Ancestors(true))
+	fmt.Println(ID(16843281).Ancestors(false))
+	fmt.Println(ID(0).Descendants(100, false))
+	fmt.Println(ID(0).Descendants(100, true))
 
-	fmt.Println(ID(0).GenDescID())
-	fmt.Println(ID(0).GenDescID())
-	fmt.Println(ID(0).GenDescID())
-	fmt.Println(ID(0).GenDescID())
-	fmt.Println(ID(0).GenDescID())
-
-	fmt.Println(ID(1).GenDescID())
-	fmt.Println(ID(17).GenDescID())
-	fmt.Println(ID(145).GenDescID())
-	fmt.Println(ID(657).GenDescID())
-
-	fmt.Println(ID(1).GenDescID())
-	fmt.Println(ID(1).GenDescID())
-
-	fmt.Println(ID(2).GenDescID())
-	fmt.Println(ID(3).GenDescID())
-
-	fmt.Println(ID(9).GenDescID())
-
-	fmt.Println(ID(657).AncestorsWithSelf())
-	fmt.Println(ID(0).Descendants(100))
-	fmt.Println(ID(0).DescendantsWithSelf(100))
+	return
 
 	fmt.Println(ID(1).Parent())
 	fmt.Println(ID(657).Parent())
@@ -67,7 +83,6 @@ func TestDescendants(t *testing.T) {
 }
 
 func TestSetID(t *testing.T) {
-	lk.FailOnErr("%v", Init(4, 3, 2, 7, 8, 18, 6, 8, 5, 3))
 
 	// lk.FailOnErr("%v", SetID(1))
 	// lk.FailOnErr("%v", SetID(2))
@@ -96,27 +111,6 @@ func TestSetID(t *testing.T) {
 }
 
 func TestLeftShift(t *testing.T) {
-	lk.FailOnErr("%v", Init(4, 3, 2, 7, 8, 18, 6, 8, 5, 3))
-
-	id, err := SetID(ID(1))
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = SetID(ID(2))
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = SetID(ID(3))
-	fmt.Printf("%x, %v\n", id, err)
-
-	id, err = ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-
-	fmt.Println("------------------------")
-	fmt.Println(HierarchyIDs())
-	fmt.Println(StandaloneIDs())
-	fmt.Println(WholeIDs())
-	fmt.Println("------------------------")
 
 	ids, err := DeleteID(1, false)
 	fmt.Printf("%x, %v\n", ids, err)
@@ -142,25 +136,6 @@ func TestLeftShift(t *testing.T) {
 }
 
 func TestCanBeBranch(t *testing.T) {
-	lk.FailOnErr("%v", Init(4, 3, 2, 7, 8, 18, 6, 8, 5, 3))
-
-	id, err := ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-
-	id, err = ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-
-	fmt.Println("------------------------")
-	fmt.Println(HierarchyIDs())
-	fmt.Println(StandaloneIDs())
-	fmt.Println(WholeIDs())
-	fmt.Println("------------------------")
 
 	// fmt.Println(CopyBranchAt(2, 0x2, 0x12))
 	// fmt.Println(TransplantAt(1, 0x12))
@@ -173,60 +148,14 @@ func TestCanBeBranch(t *testing.T) {
 }
 
 func TestDescTree(t *testing.T) {
-	lk.FailOnErr("%v", Init(4, 3, 2, 7, 8, 18, 6, 8, 5, 3))
-
-	fmt.Println(ID(131746).Part(0))
-	fmt.Println(ID(131746).Part(1))
-	fmt.Println(ID(131746).Part(2))
-	fmt.Println(ID(131746).Part(3))
-	fmt.Println(ID(131746).Part(4))
-	return
-
-	id, err := ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-	id, err = ID(id).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-
-	id, err = ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
 
 	aid, err := ID(0).AvailableDescID()
 	fmt.Printf("available: %x %v\n", aid, err)
 
-	id, err = ID(0).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
-
-	id, err = ID(2).GenDescID()
-	fmt.Printf("%x, %v\n", id, err)
+	// lk.FailOnErr("%v", CopyBranch(17, 2))
+	lk.FailOnErr("%v", Transplant(17, 3))
 
 	fmt.Println("------------------------")
 	fmt.Println(HierarchyIDs())
-	fmt.Println(StandaloneIDs())
-	fmt.Println(WholeIDs())
-	fmt.Println("------------------------")
-
-	// fmt.Println(CopyBranchAt(2, 0x2, 0x12))
-	// fmt.Println(TransplantAt(1, 0x12))
-
-	// if id, nShiftedSeg, err := ID(17).descAsTree(); err == nil {
-	// 	fmt.Println(id, nShiftedSeg)
-	// }
-
-	// id, err = ID(17).HookDesc(1)
-	// fmt.Printf("%x, %v\n", id, err)
-
-	nid, err := ID(2).TransplantBranch(ID(17))
-	fmt.Printf("%v, --- %v\n", nid, err)
-
-	fmt.Println("------------------------")
-	fmt.Println(HierarchyIDs())
-	fmt.Println(StandaloneIDs())
-	fmt.Println(WholeIDs())
 	fmt.Println("------------------------")
 }

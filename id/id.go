@@ -236,70 +236,13 @@ func (id ID) AvailableDescID() (ID, error) {
 	return desc, nil
 }
 
-// return new hierarchy branch
-func (id ID) CopyBranch(bid ID) ([]ID, error) {
-	node := id
-	if NotIn(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
-		return nil, fmt.Errorf("id(0x%x) is invalid ID, cannot do CopyBranch", id)
-	}
-	if NotIn(bid.Type(), ID_HRCHY_ALLOC) {
-		return nil, fmt.Errorf("bid(0x%x) is invalid ID, cannot do CopyBranch", bid)
-	}
-	rt := ID(0)
-	mTree := bid.TreeDescription()
-	for _, desc := range bid.DescendantsWithSelf(100) {
-		var (
-			nid ID
-			err error
-		)
-		if n, ok := mTree[desc]; ok && n == 0 {
-			if nid, err = id.GenDescID(); err != nil {
-				return nil, err
-			}
-			if rt == 0 {
-				rt = nid
-			}
-		}
-		for i := 0; i < mTree[desc]; i++ {
-			if nid, err = id.GenDescID(); err != nil {
-				return nil, err
-			}
-			if rt == 0 {
-				rt = nid
-			}
-		}
-		id = nid
-	}
-	return append([]ID{node}, rt.DescendantsWithSelf(100)...), nil
-}
-
-// return new hierarchy branch
-func (id ID) TransplantBranch(bid ID) ([]ID, error) {
-	nid, err := id.CopyBranch(bid)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := DeleteID(bid, true); err != nil {
-		return nil, err
-	}
-	return nid, nil
-}
-
-func (id ID) Ancestors() (ids []ID) {
+func (id ID) Ancestors(inclSelf bool) (ids []ID) {
 	if id.Type() == ID_HRCHY_ALLOC {
-		for i := 0; i < id.Level(); i++ {
-			sid := id & ID(_masks[i])
-			if sid.Type() == ID_HRCHY_ALLOC {
-				ids = append(ids, sid)
-			}
+		n := id.Level()
+		if inclSelf {
+			n += 1
 		}
-	}
-	return
-}
-
-func (id ID) AncestorsWithSelf() (ids []ID) {
-	if id.Type() == ID_HRCHY_ALLOC {
-		for i := 0; i <= id.Level(); i++ {
+		for i := 0; i < n; i++ {
 			sid := id & ID(_masks[i])
 			if sid.Type() == ID_HRCHY_ALLOC {
 				ids = append(ids, sid)
@@ -311,7 +254,7 @@ func (id ID) AncestorsWithSelf() (ids []ID) {
 
 // 0 is valid parent for level0's ID
 func (id ID) Parent() (ID, bool) {
-	if ancestors := id.Ancestors(); len(ancestors) > 0 {
+	if ancestors := id.Ancestors(false); len(ancestors) > 0 {
 		return ancestors[len(ancestors)-1], true
 	}
 	if id.Type() == ID_HRCHY_ALLOC && id.Level() == 0 {
@@ -342,33 +285,26 @@ func (id ID) iterDesc(out *[]ID) {
 	}
 }
 
-func (id ID) Descendants(nextGenerations int) []ID {
+func (id ID) Descendants(nextGenerations int, inclSelf bool) []ID {
 	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		rt := []ID{}
 		id.iterDesc(&rt)
 		nd := id.Level() + nextGenerations
-		return Filter(rt, func(i int, e ID) bool {
+		desc := Filter(rt, func(i int, e ID) bool {
 			return e.Level() <= nd
 		})
-	}
-	return nil
-}
-
-func (id ID) DescendantsWithSelf(nextGenerations int) []ID {
-	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
-		return append([]ID{id}, id.Descendants(nextGenerations)...)
+		if inclSelf {
+			return append([]ID{id}, desc...)
+		} else {
+			return desc
+		}
 	}
 	return nil
 }
 
 func (id ID) PrintDescendants(nextGenerations int, inclSelf bool) {
 	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
-		var descendants []ID
-		if inclSelf {
-			descendants = id.DescendantsWithSelf(nextGenerations)
-		} else {
-			descendants = id.Descendants(nextGenerations)
-		}
+		descendants := id.Descendants(nextGenerations, inclSelf)
 		for i, id := range descendants {
 			switch i {
 			case 0:
@@ -382,14 +318,12 @@ func (id ID) PrintDescendants(nextGenerations int, inclSelf bool) {
 	}
 }
 
-func (id ID) TreeDescription() map[ID]int {
-	rt := make(map[ID]int)
-	for _, desc := range id.DescendantsWithSelf(100) {
-		if n, ok := mRecord.Load(desc); ok {
-			rt[desc] = n.(int)
-		}
+func (id ID) DescendantsCount(inclSelf bool) (counts []int) {
+	m := TreeNodeCount()
+	for _, desc := range id.Descendants(100, inclSelf) {
+		counts = append(counts, m[desc])
 	}
-	return rt
+	return counts
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -413,8 +347,8 @@ func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
 			// fmt.Printf("(0x%x) is deleted\n", id)
 		}
 	} else {
-		// fmt.Println(id.DescendantsWithSelf(100))
-		for _, desc := range Reverse(id.DescendantsWithSelf(100)) {
+		// fmt.Println(id.Descendants(100, true))
+		for _, desc := range Reverse(id.Descendants(100, true)) {
 			if _, err := DeleteID(desc, false); err != nil {
 				return nil, err
 			}
@@ -465,7 +399,7 @@ func GenStdalID() (ID, error) {
 ///////////////////////////////////////////////////////////////////////
 
 func HierarchyIDs() []ID {
-	return ID(0).Descendants(len(_segs))
+	return ID(0).Descendants(len(_segs), false)
 }
 
 func StandaloneIDs() (rt []ID) {
@@ -489,6 +423,87 @@ func WholeIDs() []ID {
 	return append(hIDs, sIDs...)
 }
 
+func TreeDescription() map[ID][]ID {
+	rt := make(map[ID][]ID)
+	descendants := ID(0).Descendants(100, true)
+	for _, d1 := range descendants {
+		if d1.Level() == 0 {
+			rt[0] = append(rt[0], d1)
+		}
+		for _, d2 := range descendants {
+			if d2.Level()-d1.Level() == 1 {
+				if d2.Level() == 0 {
+					continue
+				}
+				if ID(_masks[d2.Level()-1])&d2 == d1 {
+					rt[d1] = append(rt[d1], d2)
+				}
+			}
+		}
+	}
+	return rt
+}
+
+func TreeNodeCount() map[ID]int {
+	rt := make(map[ID]int)
+	for _, desc := range ID(0).Descendants(100, true) {
+		if n, ok := mRecord.Load(desc); ok {
+			rt[desc] = n.(int)
+		}
+	}
+	return rt
+}
+
+// TreeNodeCount is needed...
+// the 1st node is existing id, then the others are new generated id
+// the 1st nCountOfDesc is 1, then others are from TreeNodeCount[existing]
+
+func CopyBranch(oriNode, dstNode ID) error {
+	if NotIn(oriNode.Type(), ID_HRCHY_ALLOC) {
+		return fmt.Errorf("oriNode(0x%x) is invalid ID, cannot do CopyBranch", oriNode)
+	}
+	if NotIn(dstNode.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
+		return fmt.Errorf("dstNode(0x%x) is invalid ID, cannot do CopyBranch", dstNode)
+	}
+	listDescCount := oriNode.DescendantsCount(true)
+	idx4DescCount := 0
+	fmt.Println(listDescCount)
+
+	dstNode, err := dstNode.GenDescID() // for root oriNode
+	if err != nil {
+		return err
+	}
+	return copyBranch(oriNode, dstNode, listDescCount, idx4DescCount)
+}
+
+func copyBranch(oriNode, dstNode ID, listDescCount []int, idx4DescCount int) error {
+	idxCount := listDescCount[idx4DescCount]
+	if idxCount == 0 {
+		return nil
+	}
+	for i := 0; i < idxCount; i++ {
+		nid, err := dstNode.GenDescID()
+		if err != nil {
+			return err
+		}
+		idx4DescCount++
+		if err := copyBranch(nid, nid, listDescCount, idx4DescCount); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func Transplant(oriNode, dstNode ID) error {
+	if err := CopyBranch(oriNode, dstNode); err != nil {
+		return err
+	}
+	if _, err := DeleteID(oriNode, true); err != nil {
+		return err
+	}
+	return nil
+}
+
 ///////////////////////////////////////////////////////////////////////
 
 // if id exists, do nothing and no error
@@ -508,7 +523,7 @@ func SetID(id ID) (ID, error) {
 
 	switch parent.Type() {
 	case ID_HRCHY_ROOT, ID_HRCHY_ALLOC:
-		if NotIn(id, parent.Descendants(100)...) {
+		if NotIn(id, parent.Descendants(100, false)...) {
 			if v, ok := mRecord.Load(parent); ok {
 				mRecord.Store(id, 0)
 				mRecord.Store(parent, v.(int)+1)
