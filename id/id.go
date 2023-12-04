@@ -545,6 +545,16 @@ func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
 	return rt, nil
 }
 
+// only delete leaves id
+func DeleteIDs(ids ...ID) error {
+	for _, id := range ids {
+		if _, err := DeleteID(id, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // here the id could be temp id, i.e not existing. but still need to be shifted
 // func (id *ID) leftShift(nSeg int, check bool) (ID, error) {
 // 	if check && id.Type() != ID_HRCHY_ALLOC {

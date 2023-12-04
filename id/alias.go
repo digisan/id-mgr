@@ -202,3 +202,23 @@ func PrintAlias() {
 	})
 	fmt.Println("-------------------------")
 }
+
+// DeleteIDByAlias incurs updated WholeIDs
+func DeleteIDByAlias(alias any, inclDesc bool) error {
+	if id, ok := SearchIDByAlias(alias); ok {
+		if _, err := DeleteID(id, inclDesc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// only delete leaves id
+func DeleteIDsByAlias(aliases ...any) error {
+	for _, alias := range aliases {
+		if err := DeleteIDByAlias(alias, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
