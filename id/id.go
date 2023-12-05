@@ -426,25 +426,39 @@ func TreeNodeCount() map[ID]int {
 // the 1st node is existing id, then the others are new generated id
 // the 1st nCountOfDesc is 1, then others are from TreeNodeCount[existing]
 
-func CopyBranch(oriNode, dstNode ID) error {
+func CopyBranch(oriNode, dstUnderNode ID) error {
 	if NotIn(oriNode.Type(), ID_HRCHY_ALLOC) {
 		return fmt.Errorf("oriNode(0x%x) is invalid ID, cannot do CopyBranch", oriNode)
 	}
-	if NotIn(dstNode.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
-		return fmt.Errorf("dstNode(0x%x) is invalid ID, cannot do CopyBranch", dstNode)
+	if NotIn(dstUnderNode.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
+		return fmt.Errorf("dstNode(0x%x) is invalid ID, cannot do CopyBranch", dstUnderNode)
 	}
 	listDescCount := oriNode.DescendantsCount(true)
 	idx4DescCount := 0
 	fmt.Println(listDescCount)
 
-	dstNode, err := dstNode.GenDescID() // for root oriNode
+	dstRootNode, err := dstUnderNode.GenDescID() // for root oriNode
 	if err != nil {
 		return err
 	}
-	return copyBranch(oriNode, dstNode, listDescCount, idx4DescCount)
+
+	// ** copy root alias ** //
+	aliases := oriNode.Alias()
+	aliases = FilterMap(aliases, nil, func(i int, e any) any {
+		return fmt.Sprint(e) + "*"
+	})
+	if err := dstRootNode.AddAlias(aliases...); err != nil {
+		return err
+	}
+	// ** copy root alias ** //
+
+	return copyBranch(oriNode, dstRootNode, listDescCount, idx4DescCount)
 }
 
 func copyBranch(oriNode, dstNode ID, listDescCount []int, idx4DescCount int) error {
+
+	fmt.Printf("%x ===> %x\n", oriNode, dstNode)
+
 	idxCount := listDescCount[idx4DescCount]
 	if idxCount == 0 {
 		return nil
@@ -454,6 +468,17 @@ func copyBranch(oriNode, dstNode ID, listDescCount []int, idx4DescCount int) err
 		if err != nil {
 			return err
 		}
+
+		// ** copy alias ** //
+		// aliases := oriNode.Alias()
+		// aliases = FilterMap(aliases, nil, func(i int, e any) any {
+		// 	return fmt.Sprint(e) + "*"
+		// })
+		// if err := nid.AddAlias(aliases...); err != nil {
+		// 	return err
+		// }
+		// ** copy alias ** //
+
 		idx4DescCount++
 		if err := copyBranch(nid, nid, listDescCount, idx4DescCount); err != nil {
 			return err
@@ -462,8 +487,8 @@ func copyBranch(oriNode, dstNode ID, listDescCount []int, idx4DescCount int) err
 	return nil
 }
 
-func Transplant(oriNode, dstNode ID) error {
-	if err := CopyBranch(oriNode, dstNode); err != nil {
+func Transplant(oriNode, dstUnderNode ID) error {
+	if err := CopyBranch(oriNode, dstUnderNode); err != nil {
 		return err
 	}
 	if _, err := DeleteID(oriNode, true); err != nil {
@@ -473,7 +498,7 @@ func Transplant(oriNode, dstNode ID) error {
 }
 
 // if id exists, do nothing and no error
-func SetID(id ID) (ID, error) {
+func SetID(id ID, aliases ...any) (ID, error) {
 	// if In(id.Type(), ID_HRCHY_UNALLOC, ID_STDAL_UNALLOC) {
 	var parent ID
 	if lvl := Level(id); lvl == 0 {
@@ -496,6 +521,12 @@ func SetID(id ID) (ID, error) {
 			} else {
 				return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
 			}
+
+			// ** add the id's aliases ** //
+			if err := id.AddAlias(aliases...); err != nil {
+				return 0, err
+			}
+
 			return id, nil
 		}
 	case ID_STDAL_ROOT:
@@ -506,6 +537,12 @@ func SetID(id ID) (ID, error) {
 			} else {
 				return 0, fmt.Errorf("id(0x%x)'s parent(0x%x) load error", id, parent)
 			}
+
+			// ** add the id's aliases ** //
+			if err := id.AddAlias(aliases...); err != nil {
+				return 0, err
+			}
+
 			return id, nil
 		}
 	default:
@@ -528,6 +565,13 @@ func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
 			if !ok {
 				return nil, fmt.Errorf("id's parent(%x) record error", sid)
 			}
+
+			// ** before deleting id, its alias are removed in advance ** //
+			if err := id.RmAlias(); err != nil {
+				return nil, err
+			}
+			// ** //
+
 			mRecord.Store(sid, n.(int)-1)
 			mRecord.Delete(id)
 			rt = []ID{id}

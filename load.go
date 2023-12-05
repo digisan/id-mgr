@@ -17,8 +17,9 @@ func IngestTree(fpath string) error {
 		i   int
 		err error
 	)
-	lk.FailOnErr("%v", ClrAllAlias()) // clear alias firstly !!!
-	lk.FailOnErr("%v", ClrAllID())    // before clearing id, must clear its alias in advance
+
+	lk.FailOnErr("%v", ClrAllID()) // clearing all ID which includes clearing their aliases
+
 	fd.FileLineScan(fpath, func(line string) (bool, string) {
 		i++
 
@@ -38,9 +39,9 @@ func IngestTree(fpath string) error {
 			lk.FailOnErr("%v", fmt.Errorf("ingested fail: id parsed error @%w", err))
 		}
 
-		nid, err := SetID(ID(id))
+		_, err = SetID(ID(id), TypesAsAnyToAnys(strings.Split(id_alias[1], "^"))...)
 		lk.FailOnErr("%v", err)
-		lk.FailOnErr("%v", nid.AddAlias(TypesAsAnyToAnys(strings.Split(id_alias[1], "^"))...))
+
 		return true, ""
 	}, "")
 
