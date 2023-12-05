@@ -516,9 +516,9 @@ func SetID(id ID) (ID, error) {
 }
 
 func DeleteID(id ID, inclDesc bool) (rt []ID, err error) {
-	if In(id.Type(), ID_HRCHY_ROOT, ID_STDAL_ROOT) {
-		return nil, fmt.Errorf("root id cannot be deleted")
-	}
+	// if In(id.Type(), ID_HRCHY_ROOT, ID_STDAL_ROOT) {
+	// 	return nil, fmt.Errorf("root id cannot be deleted")
+	// }
 	if !inclDesc {
 		if id.ChildrenCount() > 0 {
 			return nil, fmt.Errorf("id(%x) has children, cannot be deleted", id)
@@ -553,6 +553,14 @@ func DeleteIDs(ids ...ID) error {
 		}
 	}
 	return nil
+}
+
+func ClrAllID() error {
+	_, err := DeleteID(0, true)
+	if err != nil {
+		return err
+	}
+	return DeleteIDs(StandaloneIDs()...)
 }
 
 func IsValidID(id ID) bool {

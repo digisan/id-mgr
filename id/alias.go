@@ -88,10 +88,14 @@ func (id ID) RmAlias(aliases ...any) error {
 	if NotIn(id.Type(), ID_HRCHY_ALLOC, ID_STDAL_ALLOC) {
 		return fmt.Errorf("error: %v doesn't exist, cannot do RmAlias", id)
 	}
-	remainder := Filter(id.Alias(), func(i int, e any) bool {
-		return NotIn(e, aliases...)
-	})
-	mAlias.Store(id, remainder)
+	if len(aliases) > 0 {
+		remainder := Filter(id.Alias(), func(i int, e any) bool {
+			return NotIn(e, aliases...)
+		})
+		mAlias.Store(id, remainder)
+	} else {
+		mAlias.Delete(id)
+	}
 	return nil
 }
 
@@ -205,6 +209,15 @@ func ClrAlias(self any, aliases ...any) error {
 		return fmt.Errorf("cannot find id by alias(%v)", self)
 	}
 	return id.ClrAlias()
+}
+
+func ClrAllAlias() error {
+	for _, id := range WholeIDs() {
+		if err := id.RmAlias(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ChangeAlias(old, new any) error {

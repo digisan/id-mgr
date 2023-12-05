@@ -22,3 +22,4 @@ go.work
 fatal/
 dump.txt
 temp/
+*.txt

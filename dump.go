@@ -11,9 +11,6 @@ import (
 
 func GenIDTree(print bool) string {
 
-	// fmt.Println(mRecord)
-	// fmt.Println(WholeIDs())
-
 	lines := []string{}
 	for i, id := range HierarchyIDs() {
 		lvl := id.Level()
@@ -46,6 +43,6 @@ func GenIDTree(print bool) string {
 }
 
 func DumpIDTree(fpath string) error {
-	out := fmt.Sprintf("%016x\n", _segs) + GenIDTree(false)
+	out := PrintSegs(false) + "\n" + GenIDTree(false)
 	return os.WriteFile(fpath, []byte(out), os.ModePerm)
 }

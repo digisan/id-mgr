@@ -34,11 +34,29 @@ func init() {
 	_, err = ID(2).GenDescID()
 	lk.FailOnErr("%v", err)
 
+	_, err = GenStdalID()
+	lk.FailOnErr("%v", err)
+	_, err = GenStdalID()
+	lk.FailOnErr("%v", err)
+	_, err = GenStdalID()
+	lk.FailOnErr("%v", err)
+
 	fmt.Println("------------------------")
 	fmt.Println(HierarchyIDs())
 	fmt.Println(StandaloneIDs())
 	fmt.Println(WholeIDs())
 	fmt.Println("------------------------")
+}
+
+func TestClearAllID(t *testing.T) {
+
+	// _, err := DeleteID(MaxID, false)
+	// lk.FailOnErr("%v", err)
+
+	lk.FailOnErr("%v", ClrAllID())
+	fmt.Println(HierarchyIDs())
+	fmt.Println(StandaloneIDs())
+	fmt.Println(WholeIDs())
 }
 
 func TestDescendants(t *testing.T) {
