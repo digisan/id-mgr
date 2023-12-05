@@ -318,12 +318,13 @@ func (id ID) PrintDescendants(nextGenerations int, inclSelf bool) {
 	}
 }
 
-func (id ID) DescendantsCount(inclSelf bool) (counts []int) {
+func (id ID) DescendantsInfo(inclSelf bool) (counts []int, aliases [][]any) {
 	m := TreeNodeCount()
 	for _, desc := range id.Descendants(100, inclSelf) {
 		counts = append(counts, m[desc])
+		aliases = append(aliases, desc.Alias())
 	}
-	return counts
+	return
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -426,69 +427,69 @@ func TreeNodeCount() map[ID]int {
 // the 1st node is existing id, then the others are new generated id
 // the 1st nCountOfDesc is 1, then others are from TreeNodeCount[existing]
 
-func CopyBranch(oriNode, dstUnderNode ID) error {
+func CopyBranch(oriNode, underNode ID) error {
 	if NotIn(oriNode.Type(), ID_HRCHY_ALLOC) {
 		return fmt.Errorf("oriNode(0x%x) is invalid ID, cannot do CopyBranch", oriNode)
 	}
-	if NotIn(dstUnderNode.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
-		return fmt.Errorf("dstNode(0x%x) is invalid ID, cannot do CopyBranch", dstUnderNode)
+	if NotIn(underNode.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
+		return fmt.Errorf("dstNode(0x%x) is invalid ID, cannot do CopyBranch", underNode)
 	}
-	listDescCount := oriNode.DescendantsCount(true)
-	idx4DescCount := 0
-	fmt.Println(listDescCount)
 
-	dstRootNode, err := dstUnderNode.GenDescID() // for root oriNode
+	listDescCount, listDescAliases := oriNode.DescendantsInfo(true)
+	idx4Desc := 0
+	// fmt.Println(listDescCount)
+	// fmt.Println(listDescAliases)
+
+	dstRootNode, err := underNode.GenDescID() // for root oriNode
 	if err != nil {
 		return err
 	}
+	fmt.Printf("root node ==> %x\n", dstRootNode)
 
 	// ** copy root alias ** //
 	aliases := oriNode.Alias()
-	aliases = FilterMap(aliases, nil, func(i int, e any) any {
-		return fmt.Sprint(e) + "*"
-	})
 	if err := dstRootNode.AddAlias(aliases...); err != nil {
 		return err
 	}
 	// ** copy root alias ** //
 
-	return copyBranch(oriNode, dstRootNode, listDescCount, idx4DescCount)
+	return copyBranch(oriNode, dstRootNode, listDescCount, listDescAliases, &idx4Desc)
 }
 
-func copyBranch(oriNode, dstNode ID, listDescCount []int, idx4DescCount int) error {
+func copyBranch(oriNode, dstNode ID, listDescCount []int, listDescAliases [][]any, pIdx4Desc *int) error {
 
-	fmt.Printf("%x ===> %x\n", oriNode, dstNode)
-
-	idxCount := listDescCount[idx4DescCount]
+	idxCount := listDescCount[*pIdx4Desc]
 	if idxCount == 0 {
+		// fmt.Printf("leaf node ==> %x\n", dstNode) // leaf node
 		return nil
 	}
+
 	for i := 0; i < idxCount; i++ {
 		nid, err := dstNode.GenDescID()
 		if err != nil {
 			return err
 		}
+		// fmt.Printf("new node ==> %x\n", nid)
 
 		// ** copy alias ** //
-		// aliases := oriNode.Alias()
-		// aliases = FilterMap(aliases, nil, func(i int, e any) any {
-		// 	return fmt.Sprint(e) + "*"
-		// })
-		// if err := nid.AddAlias(aliases...); err != nil {
-		// 	return err
-		// }
+		if *pIdx4Desc+1 < len(listDescAliases) {
+			aliases := listDescAliases[*pIdx4Desc+1]
+			if err := nid.AddAlias(aliases...); err != nil {
+				return err
+			}
+		}
 		// ** copy alias ** //
 
-		idx4DescCount++
-		if err := copyBranch(nid, nid, listDescCount, idx4DescCount); err != nil {
+		(*pIdx4Desc)++
+		if err := copyBranch(nid, nid, listDescCount, listDescAliases, pIdx4Desc); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func Transplant(oriNode, dstUnderNode ID) error {
-	if err := CopyBranch(oriNode, dstUnderNode); err != nil {
+func Transplant(oriNode, underNode ID) error {
+	if err := CopyBranch(oriNode, underNode); err != nil {
 		return err
 	}
 	if _, err := DeleteID(oriNode, true); err != nil {

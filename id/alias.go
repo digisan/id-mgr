@@ -2,6 +2,7 @@ package id
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	. "github.com/digisan/go-generics/v2"
@@ -30,19 +31,19 @@ func aliasOccupied(alias any, byIDs ...ID) (bool, ID) {
 	return false, 0
 }
 
-func CheckAlias(aliases []any, fromIDs ...ID) error {
+func CheckAlias(aliases []any, fromIDs ...ID) (any, error) {
 	if len(fromIDs) == 0 {
 		fromIDs = WholeIDs()
 	}
 	for _, alias := range aliases {
 		if !validateAlias(alias) {
-			return fmt.Errorf("'%v' contains invalid characters(%+v)", alias, exclChars)
+			return alias, fmt.Errorf("'%v' contains invalid characters(%+v)", alias, exclChars)
 		}
 		if used, byId := aliasOccupied(alias, fromIDs...); used {
-			return fmt.Errorf("'%v' is already used by [%x]", alias, byId)
+			return alias, fmt.Errorf("'%v' is already used by [%x]", alias, byId)
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (id ID) Alias() []any {
@@ -68,12 +69,36 @@ func (id ID) DefaultAlias() any {
 	return fmt.Sprintf("%x", id)
 }
 
+func DuplMark(v any) any {
+	s := fmt.Sprint(v)
+	io, ic := strings.LastIndex(s, "("), strings.LastIndex(s, ")")
+	if io == -1 || ic == -1 {
+		return fmt.Sprintf("%v(2)", s)
+	}
+	name, idxstr := s[:io], s[io+1:ic]
+	if idx, ok := AnyTryToType[int](idxstr); ok {
+		return fmt.Sprintf("%v(%d)", name, idx+1)
+	}
+	return s + "*"
+}
+
 func (id ID) AddAlias(aliases ...any) error {
 	if NotIn(id.Type(), ID_HRCHY_ALLOC, ID_STDAL_ALLOC) {
 		return fmt.Errorf("error: %v doesn't exist, cannot do AddAlias", id)
 	}
-	if err := CheckAlias(aliases); err != nil {
-		return err
+AGAIN:
+	if aliasErr, err := CheckAlias(aliases); err != nil {
+		if strings.Contains(err.Error(), "used") {
+			aliases = FilterMap(aliases, nil, func(i int, e any) any {
+				if aliasErr == e {
+					return DuplMark(e)
+				}
+				return e
+			})
+			goto AGAIN
+		} else {
+			return err
+		}
 	}
 	if ea, ok := mAlias.Load(id); ok {
 		aliases = append(ea.([]any), aliases...)
