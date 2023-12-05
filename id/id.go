@@ -495,7 +495,7 @@ func Transplant(oriNode, underNode ID) error {
 	if _, err := DeleteID(oriNode, true); err != nil {
 		return err
 	}
-	return nil
+	return cleanupAlias()
 }
 
 // if id exists, do nothing and no error

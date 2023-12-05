@@ -69,19 +69,6 @@ func (id ID) DefaultAlias() any {
 	return fmt.Sprintf("%x", id)
 }
 
-func DuplMark(v any) any {
-	s := fmt.Sprint(v)
-	io, ic := strings.LastIndex(s, "("), strings.LastIndex(s, ")")
-	if io == -1 || ic == -1 {
-		return fmt.Sprintf("%v(2)", s)
-	}
-	name, idxstr := s[:io], s[io+1:ic]
-	if idx, ok := AnyTryToType[int](idxstr); ok {
-		return fmt.Sprintf("%v(%d)", name, idx+1)
-	}
-	return s + "*"
-}
-
 func (id ID) AddAlias(aliases ...any) error {
 	if NotIn(id.Type(), ID_HRCHY_ALLOC, ID_STDAL_ALLOC) {
 		return fmt.Errorf("error: %v doesn't exist, cannot do AddAlias", id)
@@ -278,6 +265,52 @@ func DeleteIDByAlias(alias any, inclDesc bool) error {
 func DeleteIDsByAlias(aliases ...any) error {
 	for _, alias := range aliases {
 		if err := DeleteIDByAlias(alias, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupAlias() error {
+	list := []ID{}
+	mAlias.Range(func(key, value any) bool {
+		// fmt.Println("mAlias.Range:", key, value)
+		aliases := value.([]any)
+		for _, alias := range aliases {
+			s := fmt.Sprint(alias)
+			io, ic := strings.LastIndex(s, "("), strings.LastIndex(s, ")")
+			if io == -1 || ic == -1 {
+				continue
+			}
+			idxstr := s[io+1 : ic]
+			if _, ok := AnyTryToType[int](idxstr); ok && strings.HasSuffix(s, ")") {
+				list = append(list, key.(ID))
+				break
+			}
+		}
+		return true
+	})
+	// fmt.Println(list)
+
+	for _, id := range list {
+		aliases := FilterMap(id.Alias(), nil, func(i int, e any) any {
+			s := fmt.Sprint(e)
+			io, ic := strings.LastIndex(s, "("), strings.LastIndex(s, ")")
+			if io == -1 || ic == -1 {
+				return e
+			}
+			name, idxstr := s[:io], s[io+1:ic]
+			if _, ok := AnyTryToType[int](idxstr); ok && strings.HasSuffix(s, ")") {
+				if _, ok := mAlias.Load(name); !ok {
+					return name
+				}
+			}
+			return e
+		})
+		if err := id.RmAlias(); err != nil {
+			return err
+		}
+		if err := id.AddAlias(aliases...); err != nil {
 			return err
 		}
 	}

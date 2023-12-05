@@ -32,3 +32,20 @@ func TestAddAlias(t *testing.T) {
 	// fmt.Println(ID(4).DefaultAlias())
 	// fmt.Println(FetchDefaultAlias("ABC"))
 }
+
+func TestCleanupAlias(t *testing.T) {
+
+	lk.FailOnErr("%v", BuildHierarchy("", "a", "b"))
+	lk.FailOnErr("%v", CreateOneDescWithAlias("", "DA", "DB"))
+	lk.FailOnErr("%v", CreateOneDescWithAlias("", "DA", "DB"))
+
+	lk.FailOnErr("%v", BuildStandalone("sa", "sb"))
+	lk.FailOnErr("%v", CreateOneStdalWithAlias("SA", "SB"))
+	lk.FailOnErr("%v", CreateOneStdalWithAlias("SA", "SB"))
+
+	PrintAlias()
+
+	cleanupAlias()
+
+	PrintAlias()
+}

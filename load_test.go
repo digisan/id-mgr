@@ -16,6 +16,8 @@ func TestLoad(t *testing.T) {
 
 	fmt.Println("---------------------------------------------------")
 	fmt.Printf("IngestTree err: %v\n", Transplant(ID(0x1), ID(0x2)))
+	// fmt.Printf("IngestTree err: %v\n", Transplant(ID(0x11), ID(0x2)))
+	// fmt.Printf("IngestTree err: %v\n", Transplant(ID(0x11), ID(0x21)))
 	GenIDTree(true)
 }
 
