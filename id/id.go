@@ -1,11 +1,13 @@
 package id
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
 
 	. "github.com/digisan/go-generics/v2"
+	lk "github.com/digisan/logkit"
 )
 
 type ID_TYPE int
@@ -76,7 +78,7 @@ func (id ID) Type() ID_TYPE {
 	if id == MaxID {
 		return ID_STDAL_ROOT
 	}
-	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= 64 {
+	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] > F16>>1 {
 		return ID_UNKNOWN
 	}
 	n := count1(_segs[0])
@@ -172,6 +174,7 @@ func (id ID) BitIdx4NextDescLvl() int {
 }
 
 func (id ID) Cap4TopLvl() uint64 {
+	lk.FailOnErrWhen(len(_cap_lvl) == 0, "%v", errors.New("[_cap_lvl] is not initialized"))
 	if id.Type() == ID_HRCHY_ALLOC {
 		lvl := id.Level()
 		if lvl == -1 {
@@ -183,6 +186,7 @@ func (id ID) Cap4TopLvl() uint64 {
 }
 
 func (id ID) Cap4NextDescLvl() uint64 {
+	lk.FailOnErrWhen(len(_cap_lvl) == 0, "%v", errors.New("[_cap_lvl] is not initialized"))
 	if In(id.Type(), ID_HRCHY_ALLOC, ID_HRCHY_ROOT) {
 		lvl := id.Level()
 		if lvl == -1 {
