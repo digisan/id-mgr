@@ -8,7 +8,6 @@ import (
 	. "github.com/digisan/go-generics/v2"
 	fd "github.com/digisan/gotk/file-dir"
 	. "github.com/digisan/id-mgr/id"
-	lk "github.com/digisan/logkit"
 )
 
 // FILL 1._segs, 2._masks，3.mAlias 4.mRecord & REDO BuildHierarchy
@@ -18,32 +17,43 @@ func IngestTree(fpath string) error {
 		err error
 	)
 
-	lk.FailOnErr("%v", ClrAllID()) // clearing all ID which includes clearing their aliases
+	// *** clearing all ID which includes clearing their aliases
+	if err := ClrAllID(); err != nil {
+		return err
+	}
 
-	fd.FileLineScan(fpath, func(line string) (bool, string) {
+	_, e := fd.FileLineScan(fpath, func(line string) (bool, string) {
 		i++
 
 		if i == 1 {
-			lk.FailOnErr("%v", Init64bitsFromStr(line))
-			return true, ""
+			err = Init64bitsFromStr(line)
+			return false, ""
 		}
 
 		// id | aliases
-		lk.FailOnErrWhen(strings.Count(line, "|") != 1, "%v", fmt.Errorf("ingested fail: incorrect ID format @%v", line))
+		if strings.Count(line, "|") != 1 {
+			err = fmt.Errorf("ingested fail: incorrect ID format @%v", line)
+			return false, ""
+		}
+
 		ln := strings.TrimSpace(line)
 		id_alias := strings.Split(ln, "|")
 
 		// *** ID *** //
-		id, err := strconv.ParseUint(id_alias[0], 16, 64) // id in dump file is hex
-		if err != nil {
-			lk.FailOnErr("%v", fmt.Errorf("ingested fail: id parsed error @%w", err))
+		id, e := strconv.ParseUint(id_alias[0], 16, 64) // id in dump file is hex
+		if e != nil {
+			err = fmt.Errorf("ingested fail: id parsed error @%w", e)
+			return false, ""
 		}
 
+		// *** Alias *** //
 		_, err = SetID(ID(id), TypesAsAnyToAnys(strings.Split(id_alias[1], "^"))...)
-		lk.FailOnErr("%v", err)
 
 		return true, ""
 	}, "")
 
-	return err
+	if err != nil {
+		return err
+	}
+	return e
 }

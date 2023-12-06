@@ -119,6 +119,16 @@ func (id ID) ClrAlias() error {
 	return nil
 }
 
+func (id ID) SetAlias(aliases ...any) error {
+	if err := id.RmAlias(); err != nil {
+		return err
+	}
+	if err := id.AddAlias(aliases...); err != nil {
+		return err
+	}
+	return nil
+}
+
 //////////////////////////////////////////////////////////////////
 
 func SearchIDByAlias(alias any, fromIDs ...ID) (ID, bool) {
@@ -307,10 +317,7 @@ func cleanupAlias() error {
 			}
 			return e
 		})
-		if err := id.RmAlias(); err != nil {
-			return err
-		}
-		if err := id.AddAlias(aliases...); err != nil {
+		if err := id.SetAlias(aliases...); err != nil {
 			return err
 		}
 	}
