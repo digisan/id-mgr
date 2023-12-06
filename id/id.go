@@ -62,7 +62,9 @@ func Init(segsFromLow ...uint8) error {
 		fmt.Printf("CAP HRCHY: %d\n", _cap_lvl)
 	}
 	mRecord.Store(ID(0), 0)
+	mAlias.Store(ID(0), []any{ID_HRCHY_ROOT.String()})
 	mRecord.Store(MaxID, 0)
+	mAlias.Store(MaxID, []any{ID_STDAL_ROOT.String()})
 	return nil
 }
 
@@ -376,8 +378,11 @@ func HierarchyIDs() []ID {
 }
 
 func StandaloneIDs() (rt []ID) {
-	n := count1(_segs[0])
 	nStdal := MaxID.ChildrenCount()
+	if nStdal <= 0 {
+		return
+	}
+	n := count1(_segs[0])
 	capStdal := Cap4Stdal()
 	for i := uint64(1); i <= capStdal; i++ {
 		if id := ID(i << n); id.Type() == ID_STDAL_ALLOC {
@@ -605,6 +610,9 @@ func DeleteIDs(ids ...ID) error {
 }
 
 func ClrAllID() error {
+	if len(_masks) == 0 || len(_segs) == 0 || len(_cap_lvl) == 0 || _cap_std == 0 {
+		return nil
+	}
 	_, err := DeleteID(0, true)
 	if err != nil {
 		return err
@@ -622,6 +630,13 @@ func IsValidID(id ID) bool {
 		}
 	}
 	return len(id.Ancestors(true)) > 0
+}
+
+func PrintRecord() {
+	mRecord.Range(func(key, value any) bool {
+		fmt.Println("mRecord:", key, "-->", value)
+		return true
+	})
 }
 
 // here the id could be temp id, i.e not existing. but still need to be shifted

@@ -40,7 +40,14 @@ func Init64bitsFromStr(s string) error {
 			_segs = append(_segs, seg)
 		}
 		_masks = genMasks(_segs)
-		return initCaps()
+		if err := initCaps(); err != nil {
+			return err
+		}
+		mRecord.Store(ID(0), 0)
+		mAlias.Store(ID(0), []any{ID_HRCHY_ROOT.String()})
+		mRecord.Store(MaxID, 0)
+		mAlias.Store(MaxID, []any{ID_STDAL_ROOT.String()})
+		return nil
 	}
 	return fmt.Errorf("invalid s(%s) for init64bits", s)
 }
