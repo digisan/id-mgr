@@ -80,7 +80,7 @@ func (id ID) Type() ID_TYPE {
 	if id == MaxID {
 		return ID_STDAL_ROOT
 	}
-	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] > F16>>1 {
+	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= F16>>1 {
 		return ID_UNKNOWN
 	}
 	n := count1(_segs[0])
@@ -336,14 +336,14 @@ func (id ID) DescendantsInfo(inclSelf bool) (counts []int, aliases [][]any) {
 ///////////////////////////////////////////////////////////////////////
 
 func BitIdx4Stdal() int {
-	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= 64 {
+	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= F16>>1 {
 		return -1
 	}
 	return int(count1(_segs[0]))
 }
 
 func Cap4Stdal() uint64 {
-	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= 64 {
+	if len(_segs) <= 1 || _segs[0] == 0 || _segs[0] >= F16>>1 {
 		return 0
 	}
 	return F16 >> count1(_segs[0])

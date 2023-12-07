@@ -15,6 +15,8 @@ func init() {
 	lk.FailOnErr("%v", BuildHierarchy("", "L0_1", "L0_2", "L0_3"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("L0_1", "L01_1", "L01_2"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("L0_1", "L01_10", "L01_20"))
+	lk.FailOnErr("%v", CreateOneDescWithAlias("L0_1", "L01_100", "L01_200"))
+	lk.FailOnErr("%v", CreateOneDescWithAlias("L01_100", "L01_100_1", "L01_200_2"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("L01_1", "L01_1_1", "L01_1_2"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("L01_1_1", "L01_1_3", "L01_1_4"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("L0_3", "L03_1", "L03_2"))
