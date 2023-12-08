@@ -143,6 +143,18 @@ func SearchIDByAlias(alias any, fromIDs ...ID) (ID, bool) {
 	return 0, false
 }
 
+func SearchIDByAnyAlias(aliases ...any) (ID, bool) {
+	fromIDs := WholeIDs()
+	for _, alias := range aliases {
+		for _, id := range fromIDs {
+			if In(alias, id.Alias()...) {
+				return id, true
+			}
+		}
+	}
+	return 0, false
+}
+
 func AddAlias(self any, aliases ...any) error {
 	id, ok := SearchIDByAlias(self)
 	if !ok {

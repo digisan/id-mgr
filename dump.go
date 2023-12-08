@@ -32,9 +32,9 @@ func GenIDTree(print bool) string {
 		if aliases, ok := AnysTryToTypes[string](id.Alias()); ok {
 			aliasesStr = strings.Join(aliases, "^")
 		}
-		lines = append(lines, fmt.Sprintf("%s%x|%v", "\t", id, aliasesStr))
+		lines = append(lines, fmt.Sprintf("%x|%v", id, aliasesStr))
 		if print {
-			fmt.Printf("%03d: %s%x|%v\n", i+1+offset, "\t", id, aliasesStr) // print with line number, use hexadecimal 0xid
+			fmt.Printf("%03d: %x|%v\n", i+1+offset, id, aliasesStr) // print with line number, use hexadecimal 0xid
 		}
 	}
 
