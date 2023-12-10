@@ -44,8 +44,16 @@ func TestLoad(t *testing.T) {
 }
 
 func TestAddAliasEx(t *testing.T) {
-	ID(1).AddAlias("A")
-	ID(1).AddAlias("A")
-	ID(1).AddAlias("A")
+	lk.FailOnErr("%v", ID(1).AddAlias("A"))
+	lk.FailOnErr("%v", ID(1).AddAlias("A"))
+	lk.FailOnErr("%v", ID(1).AddAlias("A"))
+	GenIDTree(true)
+}
+
+func TestADAlias(t *testing.T) {
+	fmt.Println(FetchAncestorDefaultAlias(2, "L01_100_1"))
+	fmt.Println("L01_1 Parent:", FetchParentDefaultAlias("L01_1"))
+	fmt.Println(FetchDescendantDefaultAlias(1, "L0_1"))
+	fmt.Println("L0_1 Children:", FetchChildrenAlias("L0_1"))
 	GenIDTree(true)
 }

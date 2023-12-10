@@ -229,6 +229,52 @@ func FetchDefaultAlias(self any) any {
 	return id.DefaultAlias()
 }
 
+// [n] is descendant generation, n(1) is children level, n(2) is grandchildren level ...
+// return includes self
+func FetchDescendantDefaultAlias(n int, self any) (descendants []any) {
+	id, ok := SearchIDByAlias(self)
+	if !ok {
+		return
+	}
+	for _, desc := range id.Descendants(n, true) {
+		if a := desc.Alias(); len(a) > 0 {
+			descendants = append(descendants, a[0])
+		}
+	}
+	return
+}
+
+// return doesn't include self
+func FetchChildrenAlias(self any) []any {
+	rt := FetchDescendantDefaultAlias(1, self)
+	return rt[1:]
+}
+
+// [n] is ancestor generation, n(1) is parent level, n(2) is grandparent level ...
+// return includes self
+func FetchAncestorDefaultAlias(n int, self any) (ancestors []any) {
+	id, ok := SearchIDByAlias(self)
+	if !ok {
+		return
+	}
+	for _, anc := range id.Ancestors(true) {
+		if a := anc.Alias(); len(a) > 0 {
+			ancestors = append(ancestors, a[0])
+		}
+	}
+	rt := Reverse(ancestors)
+	if n < len(rt) {
+		return rt[:n+1]
+	}
+	return rt
+}
+
+// return doesn't include self
+func FetchParentDefaultAlias(self any) any {
+	rt := FetchAncestorDefaultAlias(1, self)
+	return rt[1:]
+}
+
 func RmAlias(self any, aliases ...any) error {
 	id, ok := SearchIDByAlias(self)
 	if !ok {
