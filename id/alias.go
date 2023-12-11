@@ -247,7 +247,10 @@ func FetchDescendantDefaultAlias(n int, self any) (descendants []any) {
 // return doesn't include self
 func FetchChildrenAlias(self any) []any {
 	rt := FetchDescendantDefaultAlias(1, self)
-	return rt[1:]
+	if len(rt) > 0 {
+		return rt[1:]
+	}
+	return rt
 }
 
 // [n] is ancestor generation, n(1) is parent level, n(2) is grandparent level ...
@@ -272,7 +275,10 @@ func FetchAncestorDefaultAlias(n int, self any) (ancestors []any) {
 // return doesn't include self
 func FetchParentDefaultAlias(self any) any {
 	rt := FetchAncestorDefaultAlias(1, self)
-	return rt[1:]
+	if len(rt) > 0 {
+		return rt[1:]
+	}
+	return rt
 }
 
 func RmAlias(self any, aliases ...any) error {
