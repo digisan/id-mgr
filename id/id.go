@@ -53,6 +53,10 @@ var (
 )
 
 func Init(segsFromLow ...uint8) error {
+	if err := ClrAllID(); err != nil {
+		return err
+	}
+
 	if err := init64bits(segsFromLow...); err != nil {
 		return err
 	} else {
@@ -609,6 +613,7 @@ func DeleteIDs(ids ...ID) error {
 	return nil
 }
 
+// all aliases are also deleted here
 func ClrAllID() error {
 	if len(_masks) == 0 || len(_segs) == 0 || len(_cap_lvl) == 0 || _cap_std == 0 {
 		return nil
