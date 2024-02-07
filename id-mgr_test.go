@@ -32,7 +32,11 @@ func TestDump(t *testing.T) {
 func TestLoad(t *testing.T) {
 	fmt.Printf("IngestTree err: %v\n", IngestTree("./h2.txt"))
 	GenIDTree(true)
-	fmt.Println(ID(0).DescendantsInfo(true))
+
+	ids, counts, aliases := ID(0).DescendantsInfo(false)
+	fmt.Printf("%6x\n", ids)
+	fmt.Printf("%6d\n", counts)
+	fmt.Println(aliases)
 	// fmt.Println(ID(0).ChildrenCount())
 	// fmt.Println(ID(MaxID).ChildrenCount())
 
@@ -56,4 +60,12 @@ func TestADAlias(t *testing.T) {
 	fmt.Println(FetchDescendantDefaultAlias(1, "L0_1"))
 	fmt.Println("L0_1 Children:", FetchChildrenAlias("L0_1"))
 	GenIDTree(true)
+}
+
+func TestCvtTree2JSON(t *testing.T) {
+	_, err := CvtTree2JSON("./h2.txt", "nodes.json")
+	if err != nil {
+		fmt.Println("CvtTree2JSON ERR")
+		return
+	}
 }

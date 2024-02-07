@@ -11,7 +11,7 @@ import (
 )
 
 // FILL 1._segs, 2._masks，3.mAlias 4.mRecord & REDO BuildHierarchy
-func IngestTree(fpath string) error {
+func IngestTree(fPath string) error {
 	var (
 		i   int
 		err error
@@ -22,7 +22,7 @@ func IngestTree(fpath string) error {
 		return err
 	}
 
-	_, e := fd.FileLineScan(fpath, func(line string) (bool, string) {
+	_, e := fd.FileLineScan(fPath, func(line string) (bool, string) {
 		i++
 
 		if i == 1 {

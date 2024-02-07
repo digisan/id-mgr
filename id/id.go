@@ -328,9 +328,11 @@ func (id ID) PrintDescendants(nextGenerations int, inclSelf bool) {
 	}
 }
 
-func (id ID) DescendantsInfo(inclSelf bool) (counts []int, aliases [][]any) {
+// by DFS
+func (id ID) DescendantsInfo(inclSelf bool) (ids []ID, counts []int, aliases [][]any) {
 	m := TreeNodeCount()
 	for _, desc := range id.Descendants(100, inclSelf) {
+		ids = append(ids, desc)
 		counts = append(counts, m[desc])
 		aliases = append(aliases, desc.Alias())
 	}
@@ -448,7 +450,7 @@ func CopyBranch(oriNode, underNode ID) error {
 		return fmt.Errorf("dstNode(0x%x) is invalid ID, cannot do CopyBranch", underNode)
 	}
 
-	listDescCount, listDescAliases := oriNode.DescendantsInfo(true)
+	_, listDescCount, listDescAliases := oriNode.DescendantsInfo(true)
 	idx4Desc := 0
 	// fmt.Println(listDescCount)
 	// fmt.Println(listDescAliases)

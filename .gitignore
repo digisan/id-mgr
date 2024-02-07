@@ -23,3 +23,4 @@ fatal/
 dump.txt
 temp/
 *.txt
+*.json
