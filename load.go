@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/digisan/go-generics/v2"
+	. "github.com/digisan/go-generics"
 	fd "github.com/digisan/gotk/file-dir"
 	. "github.com/digisan/id-mgr/id"
 )

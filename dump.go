@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	. "github.com/digisan/go-generics/v2"
+	. "github.com/digisan/go-generics"
 	. "github.com/digisan/id-mgr/id"
 )
 

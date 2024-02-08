@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/digisan/go-generics/v2"
+	. "github.com/digisan/go-generics"
 )
 
 // level 6 | level 5   | level 4   | level 3   | level 2        | level 1        | level 0
