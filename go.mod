@@ -3,9 +3,9 @@ module github.com/digisan/id-mgr
 go 1.22.1
 
 require (
-	github.com/digisan/go-generics v0.5.1
-	github.com/digisan/gotk v0.5.1
-	github.com/digisan/logkit v0.3.3
+	github.com/digisan/go-generics v0.5.2
+	github.com/digisan/gotk v0.5.2
+	github.com/digisan/logkit v0.3.4
 )
 
 require (
