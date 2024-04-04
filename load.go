@@ -2,6 +2,7 @@ package idmgr
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,11 @@ func IngestTree(fPath string) error {
 		i   int
 		err error
 	)
+
+	// can report NOT EXISTING error if id-tree.txt doesn't exist
+	if _, err = os.ReadFile(fPath); err != nil {
+		return err
+	}
 
 	// *** clearing all ID which includes clearing their aliases
 	if err := ClrAllID(); err != nil {
@@ -52,8 +58,13 @@ func IngestTree(fPath string) error {
 		return true, ""
 	}, "")
 
+	if e != nil {
+		return e
+	}
+
 	if err != nil {
 		return err
 	}
-	return e
+
+	return nil
 }
