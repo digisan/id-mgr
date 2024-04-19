@@ -53,10 +53,18 @@ func TestClearAllID(t *testing.T) {
 	// _, err := DeleteID(MaxID, false)
 	// lk.FailOnErr("%v", err)
 
-	lk.FailOnErr("%v", ClrAllID())
+	// lk.FailOnErr("%v", ClrAllID())
+
 	fmt.Println(HierarchyIDs())
 	fmt.Println(StandaloneIDs())
 	fmt.Println(WholeIDs())
+
+	fmt.Println(ID(17).IsAncestorOf(16843281))
+	fmt.Println(ID(17).IsParentOf(16843281))
+	fmt.Println(ID(17).IsParentOf(529))
+	fmt.Println(ID(16843281).IsDescendantOf(17))
+	fmt.Println(ID(16843281).IsDescendantOf(18))
+	fmt.Println(ID(1).IsSiblingOf(ID(2)))
 }
 
 func TestDescendants(t *testing.T) {

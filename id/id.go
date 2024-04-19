@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"sync"
 
 	. "github.com/digisan/go-generics"
@@ -337,6 +338,32 @@ func (id ID) DescendantsInfo(inclSelf bool) (ids []ID, counts []int, aliases [][
 		aliases = append(aliases, desc.Alias())
 	}
 	return
+}
+
+func (id ID) IsAncestorOf(descendant ID) bool {
+	return In(id, descendant.Ancestors(false)...)
+}
+
+func (id ID) IsDescendantOf(ancestor ID) bool {
+	return In(ancestor, id.Ancestors(false)...)
+}
+
+func (id ID) IsParentOf(child ID) bool {
+	if pid, ok := child.Parent(); ok {
+		return id == pid
+	}
+	return false
+}
+
+func (id ID) IsChildOf(parent ID) bool {
+	if pid, ok := id.Parent(); ok {
+		return parent == pid
+	}
+	return false
+}
+
+func (id ID) IsSiblingOf(sibling ID) bool {
+	return reflect.DeepEqual(id.Ancestors(false), sibling.Ancestors(false)) && id != sibling
 }
 
 ///////////////////////////////////////////////////////////////////////
