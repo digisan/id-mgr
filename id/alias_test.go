@@ -1,6 +1,7 @@
 package id
 
 import (
+	"fmt"
 	"testing"
 
 	lk "github.com/digisan/logkit"
@@ -36,8 +37,15 @@ func TestAddAlias(t *testing.T) {
 func TestCleanupAlias(t *testing.T) {
 
 	lk.FailOnErr("%v", BuildHierarchy("", "a", "b"))
+	lk.FailOnErr("%v", BuildHierarchy("a", "aa"))
+	lk.FailOnErr("%v", BuildHierarchy("aa", "aa0"))
+	lk.FailOnErr("%v", BuildHierarchy("aa", "aa1"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("", "DA", "DB"))
 	lk.FailOnErr("%v", CreateOneDescWithAlias("", "DA", "DB"))
+
+	fmt.Println("MightBeAncestorOf:", MightBeAncestorOf("a", "aa0"))
+	fmt.Println("MightBeParentOf:", MightBeParentOf("a", "aa1"))
+	fmt.Println("MightBeSiblingOf:", MightBeSiblingOf("aa0", "aa1"))
 
 	lk.FailOnErr("%v", BuildStandalone("sa", "sb"))
 	lk.FailOnErr("%v", CreateOneStdalWithAlias("SA", "SB"))

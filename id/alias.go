@@ -387,3 +387,48 @@ func cleanupAlias() error {
 	}
 	return nil
 }
+
+func MightBeAncestorOf(self, descendant any) bool {
+	if selfID, ok := SearchIDByAlias(self); ok {
+		if descendantID, ok := SearchIDByAlias(descendant); ok {
+			return selfID.IsAncestorOf(descendantID)
+		}
+	}
+	return false
+}
+
+func MightBeDescendantOf(self, ancestor any) bool {
+	if selfID, ok := SearchIDByAlias(self); ok {
+		if ancestorID, ok := SearchIDByAlias(ancestor); ok {
+			return selfID.IsDescendantOf(ancestorID)
+		}
+	}
+	return false
+}
+
+func MightBeParentOf(self, child any) bool {
+	if selfID, ok := SearchIDByAlias(self); ok {
+		if childID, ok := SearchIDByAlias(child); ok {
+			return selfID.IsParentOf(childID)
+		}
+	}
+	return false
+}
+
+func MightBeChildOf(self, parent any) bool {
+	if selfID, ok := SearchIDByAlias(self); ok {
+		if parentID, ok := SearchIDByAlias(parent); ok {
+			return selfID.IsChildOf(parentID)
+		}
+	}
+	return false
+}
+
+func MightBeSiblingOf(self, sibling any) bool {
+	if selfID, ok := SearchIDByAlias(self); ok {
+		if siblingID, ok := SearchIDByAlias(sibling); ok {
+			return selfID.IsSiblingOf(siblingID)
+		}
+	}
+	return false
+}
